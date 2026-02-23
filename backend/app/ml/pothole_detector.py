@@ -138,9 +138,8 @@ class PotholeDetector:
             'class_index': int(class_idx)
         }
 
-    def _cv_based_detect(self, image_data):
-        """Heuristic pothole detection using OpenCV when no trained model is available"""
-        # Decode image bytes to numpy array
+    def _cv_analyze(self, image_data):
+        """Core CV analysis — returns composite score, valid contours, and annotatable regions."""
         if isinstance(image_data, bytes):
             nparr = np.frombuffer(image_data, np.uint8)
             image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -161,7 +160,6 @@ class PotholeDetector:
         img_mean = np.mean(blurred)
         img_std = np.std(blurred)
 
-        # --- Feature 1: Dark region analysis ---
         dark_thresh = max(img_mean - 1.0 * img_std, img_mean * 0.65)
         _, dark_mask = cv2.threshold(blurred, dark_thresh, 255, cv2.THRESH_BINARY_INV)
 
@@ -172,10 +170,11 @@ class PotholeDetector:
         contours, _ = cv2.findContours(dark_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         total_pixels = 400 * 400
-        min_area = total_pixels * 0.005   # 0.5% of image
-        max_area = total_pixels * 0.60    # 60% of image
+        min_area = total_pixels * 0.005
+        max_area = total_pixels * 0.60
 
         valid_contours = []
+        regions = []
         for cnt in contours:
             area = cv2.contourArea(cnt)
             if min_area < area < max_area:
@@ -186,25 +185,36 @@ class PotholeDetector:
                     aspect = min(w, h) / max(w, h) if max(w, h) > 0 else 0
                     if circularity > 0.15 and aspect > 0.25:
                         valid_contours.append((cnt, area, circularity))
+                        (cx, cy), radius = cv2.minEnclosingCircle(cnt)
+                        area_ratio = area / total_pixels
+                        if area_ratio > 0.15:
+                            size = 'large'
+                        elif area_ratio > 0.05:
+                            size = 'medium'
+                        else:
+                            size = 'small'
+                        regions.append({
+                            'center_x': int(cx),
+                            'center_y': int(cy),
+                            'radius': int(radius),
+                            'area': area,
+                            'area_ratio': area_ratio,
+                            'size': size
+                        })
 
-        # Score from contours: ratio of dark contour area to image
         contour_area_total = sum(a for _, a, _ in valid_contours)
         contour_score = min(contour_area_total / total_pixels * 8, 1.0)
 
-        # --- Feature 2: Edge density ---
         edges = cv2.Canny(blurred, 50, 150)
         edge_density = np.count_nonzero(edges) / total_pixels
         edge_score = min(edge_density * 5, 1.0)
 
-        # --- Feature 3: Texture variance ---
         texture_std = float(np.std(gray))
         texture_score = min(texture_std / 80.0, 1.0)
 
-        # --- Feature 4: Dark pixel ratio ---
         dark_ratio = np.count_nonzero(dark_mask) / total_pixels
         dark_score = min(dark_ratio * 4, 1.0)
 
-        # --- Composite score ---
         composite = (
             0.35 * contour_score +
             0.20 * edge_score +
@@ -212,11 +222,24 @@ class PotholeDetector:
             0.25 * dark_score
         )
 
+        return {
+            'composite': composite,
+            'valid_contours': valid_contours,
+            'regions': regions
+        }
+
+    def _cv_based_detect(self, image_data):
+        """Heuristic pothole detection using OpenCV when no trained model is available"""
+        analysis = self._cv_analyze(image_data)
+        composite = analysis['composite']
+        valid_contours = analysis['valid_contours']
+        regions = analysis['regions']
+
         detection_threshold = 0.30
 
         if composite >= detection_threshold and len(valid_contours) > 0:
             largest_area = max(a for _, a, _ in valid_contours)
-            area_ratio = largest_area / total_pixels
+            area_ratio = largest_area / (400 * 400)
 
             if area_ratio > 0.15:
                 size_class = 'large'
@@ -244,6 +267,73 @@ class PotholeDetector:
             'confidence': round(1.0 - composite, 4),
             'class_index': 0
         }
+
+    def generate_annotated_image(self, image_data):
+        """Generate an annotated image with detected potholes circled and labeled."""
+        if isinstance(image_data, bytes):
+            nparr = np.frombuffer(image_data, np.uint8)
+            original = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        elif isinstance(image_data, str):
+            original = cv2.imread(image_data)
+        else:
+            original = image_data.copy()
+
+        if original is None:
+            raise ValueError("Could not decode image")
+
+        orig_h, orig_w = original.shape[:2]
+        scale_x = orig_w / 400.0
+        scale_y = orig_h / 400.0
+
+        analysis = self._cv_analyze(image_data)
+        regions = analysis['regions']
+        composite = analysis['composite']
+
+        colors = {
+            'small': (0, 255, 255),
+            'medium': (0, 165, 255),
+            'large': (0, 0, 255)
+        }
+
+        if composite >= 0.30 and len(regions) > 0:
+            for region in regions:
+                cx = int(region['center_x'] * scale_x)
+                cy = int(region['center_y'] * scale_y)
+                r = int(region['radius'] * max(scale_x, scale_y))
+                size = region['size']
+                color = colors.get(size, (0, 255, 0))
+
+                cv2.circle(original, (cx, cy), r, color, 3)
+                cv2.circle(original, (cx, cy), r + 4, (255, 255, 255), 1)
+
+                label = f"{size.upper()} POTHOLE"
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                font_scale = max(0.5, min(orig_w, orig_h) / 800.0)
+                thickness = max(1, int(font_scale * 2))
+                (tw, th), baseline = cv2.getTextSize(label, font, font_scale, thickness)
+
+                label_x = max(0, cx - tw // 2)
+                label_y = max(th + 10, cy - r - 12)
+
+                cv2.rectangle(original,
+                              (label_x - 5, label_y - th - 6),
+                              (label_x + tw + 5, label_y + 6),
+                              color, -1)
+                cv2.putText(original, label, (label_x, label_y),
+                            font, font_scale, (255, 255, 255), thickness)
+        else:
+            label = "NO POTHOLE DETECTED"
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = max(0.6, min(orig_w, orig_h) / 600.0)
+            thickness = max(1, int(font_scale * 2))
+            (tw, th), _ = cv2.getTextSize(label, font, font_scale, thickness)
+            lx = (orig_w - tw) // 2
+            ly = orig_h - 30
+            cv2.rectangle(original, (lx - 8, ly - th - 8), (lx + tw + 8, ly + 8), (100, 100, 100), -1)
+            cv2.putText(original, label, (lx, ly), font, font_scale, (255, 255, 255), thickness)
+
+        _, buffer = cv2.imencode('.jpg', original, [cv2.IMWRITE_JPEG_QUALITY, 90])
+        return buffer.tobytes()
 
     def estimate_diameter(self, class_name, image=None):
         """

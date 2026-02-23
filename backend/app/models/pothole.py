@@ -26,6 +26,7 @@ class Pothole(db.Model):
             'id': self.id,
             'latitude': self.latitude,
             'longitude': self.longitude,
+            'image_path': self.image_path,
             'size_classification': self.size_classification,
             'diameter': self.diameter,
             'confidence_score': self.confidence_score,

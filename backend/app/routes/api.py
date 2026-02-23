@@ -1,9 +1,10 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from app.models.pothole import Pothole, Alert
 from app.ml.pothole_detector import PotholeDetector
 from app import db
 from datetime import datetime
 import os
+import io
 
 bp = Blueprint('api', __name__)
 
@@ -69,6 +70,17 @@ def report_pothole():
 
         db.session.add(pothole)
         db.session.commit()
+
+        # Save image to disk
+        if image_data:
+            filename = f'pothole_{pothole.id}.jpg'
+            upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'uploads')
+            os.makedirs(upload_dir, exist_ok=True)
+            upload_path = os.path.join(upload_dir, filename)
+            with open(upload_path, 'wb') as f:
+                f.write(image_data)
+            pothole.image_path = filename
+            db.session.commit()
 
         # Check if alert needed for large potholes (Objective 3)
         alert_generated = False
@@ -166,6 +178,78 @@ def acknowledge_alert(alert_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 400
+
+
+@bp.route('/potholes/<int:pothole_id>', methods=['DELETE'])
+def delete_pothole(pothole_id):
+    """Delete a pothole record and its image file"""
+    try:
+        pothole = Pothole.query.get_or_404(pothole_id)
+
+        # Delete image file if it exists
+        if pothole.image_path:
+            upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'uploads')
+            image_path = os.path.join(upload_dir, os.path.basename(pothole.image_path))
+            if os.path.exists(image_path):
+                os.remove(image_path)
+
+        # Delete associated alerts
+        Alert.query.filter_by(pothole_id=pothole_id).delete()
+
+        db.session.delete(pothole)
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': f'Pothole #{pothole_id} deleted successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+
+@bp.route('/potholes/<int:pothole_id>/annotated-image', methods=['GET'])
+def get_annotated_image(pothole_id):
+    """Get annotated image with detected potholes circled and labeled"""
+    try:
+        pothole = Pothole.query.get_or_404(pothole_id)
+        if not pothole.image_path:
+            return jsonify({'error': 'No image available for this pothole'}), 404
+
+        upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'uploads')
+        image_path = os.path.join(upload_dir, os.path.basename(pothole.image_path))
+        if not os.path.exists(image_path):
+            return jsonify({'error': 'Image file not found'}), 404
+
+        with open(image_path, 'rb') as f:
+            image_bytes = f.read()
+
+        annotated_bytes = detector.generate_annotated_image(image_bytes)
+        return send_file(
+            io.BytesIO(annotated_bytes),
+            mimetype='image/jpeg',
+            download_name=f'annotated_{pothole.image_path}'
+        )
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/potholes/<int:pothole_id>/original-image', methods=['GET'])
+def get_original_image(pothole_id):
+    """Get the original uploaded image"""
+    try:
+        pothole = Pothole.query.get_or_404(pothole_id)
+        if not pothole.image_path:
+            return jsonify({'error': 'No image available for this pothole'}), 404
+
+        upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'uploads')
+        image_path = os.path.join(upload_dir, os.path.basename(pothole.image_path))
+        if not os.path.exists(image_path):
+            return jsonify({'error': 'Image file not found'}), 404
+
+        return send_file(image_path, mimetype='image/jpeg')
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @bp.route('/stats', methods=['GET'])
