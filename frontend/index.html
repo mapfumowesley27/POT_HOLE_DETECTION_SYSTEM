@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pothole Detection System - Zimbabwe</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Pothole Detection System</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#report">Report Pothole</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#map">Map View</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#dashboard">Dashboard</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Report Form Section -->
+        <section id="report" class="mb-5">
+            <h2>Report a Pothole</h2>
+            <div class="row">
+                <div class="col-md-6">
+                    <form id="reportForm">
+                        <div class="mb-3">
+                            <label for="location" class="form-label">Location</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="location" placeholder="Click on map to set location" readonly>
+                                <button class="btn btn-outline-secondary" type="button" id="getCurrentLocation">Use My Location</button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="image" class="form-label">Pothole Image</label>
+                            <input class="form-control" type="file" id="image" accept="image/*" onchange="previewImage(event)">
+                            <div class="mt-2" id="imagePreviewContainer" style="display: none;">
+                                <img id="imagePreview" src="#" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: 5px;">
+                                <div id="imageAnalysis" class="mt-2"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Additional Details</label>
+                            <textarea class="form-control" id="description" rows="3"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Submit Report</button>
+                    </form>
+                </div>
+                <div class="col-md-6">
+                    <div id="reportMap" style="height: 300px;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Map View Section -->
+        <section id="map" class="mb-5">
+            <h2>Pothole Map</h2>
+            <div id="mainMap" style="height: 500px;"></div>
+        </section>
+
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="mb-5">
+            <h2>Dashboard</h2>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card text-white bg-danger mb-3">
+                        <div class="card-header">Critical Potholes</div>
+                        <div class="card-body">
+                            <h5 class="card-title" id="criticalCount">0</h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning mb-3">
+                        <div class="card-header">Pending Repairs</div>
+                        <div class="card-body">
+                            <h5 class="card-title" id="pendingCount">0</h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success mb-3">
+                        <div class="card-header">Repaired</div>
+                        <div class="card-body">
+                            <h5 class="card-title" id="repairedCount">0</h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-info mb-3">
+                        <div class="card-header">Alerts</div>
+                        <div class="card-body">
+                            <h5 class="card-title" id="alertCount">0</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Heatmap and Alerts -->
+            <div class="row mt-4">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">Density Heatmap (Objective 2)</div>
+                        <div class="card-body">
+                            <div id="heatmapContainer" style="height: 400px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">Recent Alerts (Objective 3)</div>
+                        <div class="card-body" id="alertsList">
+                            <!-- Alerts will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Scripts - Note the order: config.js first, then main.js -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
