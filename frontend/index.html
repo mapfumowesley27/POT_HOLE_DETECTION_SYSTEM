@@ -6,136 +6,172 @@
     <title>Pothole Detection System - Zimbabwe</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.heat/dist/leaflet-heat.css">
+    <!-- Font Awesome for crisp icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Google Font: Inter (professional, clean) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..700;1,14..32,400..700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <!-- glass navigation (identical to gallery/page style) -->
+    <nav class="navbar navbar-expand-lg navbar-dark glass-nav sticky-top">
         <div class="container">
-            <a class="navbar-brand" href="#">Pothole Detection System</a>
+            <a class="navbar-brand" href="index.html"><i class="fas fa-road me-2" style="color: #8cb4ff;"></i>Pothole Detection · Zimbabwe</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#report">Report Pothole</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#map">Map View</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#dashboard">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="gallery.html">📸 Gallery</a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link active" href="#report"><i class="fas fa-plus-circle me-1"></i>Report</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#map"><i class="fas fa-map-marked-alt me-1"></i>Map</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#dashboard"><i class="fas fa-chart-pie me-1"></i>Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="gallery.html"><i class="fas fa-images me-1"></i>Gallery</a></li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <div class="container mt-4">
-        <!-- Report Form Section -->
+    <div class="container mt-4 mt-md-5">
+        <!-- REPORT SECTION (glass) -->
         <section id="report" class="mb-5">
-            <h2>Report a Pothole</h2>
-            <div class="row">
-                <div class="col-md-6">
-                    <form id="reportForm">
-                        <div class="mb-3">
-                            <label for="location" class="form-label">Location</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="location" placeholder="Click on map to set location" readonly>
-                                <button class="btn btn-outline-secondary" type="button" id="getCurrentLocation">Use My Location</button>
+            <div class="glass-card">
+                <h2 class="section-title"><i class="fas fa-exclamation-triangle"></i> Report a pothole</h2>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <form id="reportForm">
+                            <div class="mb-4">
+                                <label for="location" class="form-label fw-semibold">📍 Location</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control glass-input" id="location" placeholder="Click map or use my location" readonly>
+                                    <button class="btn btn-outline-glass" type="button" id="getCurrentLocation"><i class="fas fa-location-arrow me-1"></i> My location</button>
+                                </div>
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="image" class="form-label">Pothole Image</label>
-                            <input class="form-control" type="file" id="image" accept="image/*" onchange="previewImage(event)">
-                            <div class="mt-2" id="imagePreviewContainer" style="display: none;">
-                                <img id="imagePreview" src="#" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: 5px;">
-                                <div id="imageAnalysis" class="mt-2"></div>
+                            <div class="mb-4">
+                                <label for="image" class="form-label fw-semibold">📸 Pothole image</label>
+                                <input class="form-control glass-input" type="file" id="image" accept="image/*" onchange="previewImage(event)">
+                                <div class="mt-3" id="imagePreviewContainer" style="display: none;">
+                                    <img id="imagePreview" src="#" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: 16px;">
+                                    <div id="imageAnalysis" class="mt-2 small fst-italic">Image ready for analysis</div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="description" class="form-label">Additional Details</label>
-                            <textarea class="form-control" id="description" rows="3"></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Submit Report</button>
-                    </form>
-                </div>
-                <div class="col-md-6">
-                    <div id="reportMap" style="height: 300px;"></div>
+                            <div class="mb-4">
+                                <label for="description" class="form-label fw-semibold">📋 Additional details</label>
+                                <textarea class="form-control glass-input" id="description" rows="3" placeholder="size, traffic impact, etc."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-glass-primary px-5 py-2"><i class="fas fa-cloud-upload-alt me-2"></i>Submit report</button>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <div id="reportMap" class="map-glass" style="height: 280px;"></div>
+                        <p class="small text-muted mt-2"><i class="fas fa-hand-pointer"></i> Click on map to set precise location</p>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- Map View Section -->
+        <!-- MAP VIEW SECTION (glass) -->
         <section id="map" class="mb-5">
-            <h2>Pothole Map</h2>
-            <div id="mainMap" style="height: 500px;"></div>
+            <div class="glass-card">
+                <h2 class="section-title"><i class="fas fa-map"></i> Live pothole map</h2>
+                <div id="mainMap" class="map-glass" style="height: 450px;"></div>
+            </div>
         </section>
 
-        <!-- Dashboard Section -->
+        <!-- DASHBOARD SECTION (glass) -->
         <section id="dashboard" class="mb-5">
-            <h2>Dashboard</h2>
-            <div class="row">
-                <div class="col-md-3">
-                    <div class="card text-white bg-danger mb-3">
-                        <div class="card-header">Critical Potholes</div>
-                        <div class="card-body">
-                            <h5 class="card-title" id="criticalCount">0</h5>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-white bg-warning mb-3">
-                        <div class="card-header">Pending Repairs</div>
-                        <div class="card-body">
-                            <h5 class="card-title" id="pendingCount">0</h5>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-white bg-success mb-3">
-                        <div class="card-header">Repaired</div>
-                        <div class="card-body">
-                            <h5 class="card-title" id="repairedCount">0</h5>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-white bg-info mb-3">
-                        <div class="card-header">Alerts</div>
-                        <div class="card-body">
-                            <h5 class="card-title" id="alertCount">0</h5>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div class="glass-card">
+                <h2 class="section-title"><i class="fas fa-chart-line"></i> Overview dashboard</h2>
 
-            <!-- Heatmap and Alerts -->
-            <div class="row mt-4">
-                <div class="col-md-8">
-                    <div class="card">
-                        <div class="card-header">Density Heatmap (Objective 2)</div>
-                        <div class="card-body">
-                            <div id="heatmapContainer" style="height: 400px;"></div>
+                <!-- stats cards with glass, keeping original data -->
+                <div class="row g-3 mb-5">
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card">
+                            <div class="stat-value" id="criticalCount">0</div>
+                            <div class="stat-label"><i class="fas fa-exclamation-circle me-1 text-danger"></i>Critical</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card">
+                            <div class="stat-value" id="pendingCount">0</div>
+                            <div class="stat-label"><i class="fas fa-clock me-1 text-warning"></i>Pending</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card">
+                            <div class="stat-value" id="repairedCount">0</div>
+                            <div class="stat-label"><i class="fas fa-check-circle me-1 text-success"></i>Repaired</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card">
+                            <div class="stat-value" id="alertCount">0</div>
+                            <div class="stat-label"><i class="fas fa-bell me-1 text-info"></i>Alerts</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card">
-                        <div class="card-header">Recent Alerts (Objective 3)</div>
-                        <div class="card-body" id="alertsList">
-                            <!-- Alerts will be loaded here -->
+
+                <!-- heatmap + alerts row -->
+                <div class="row g-4">
+                    <div class="col-lg-8">
+                        <div class="bg-white bg-opacity-25 p-3 rounded-4" style="backdrop-filter: blur(4px);">
+                            <h5 class="fw-semibold mb-3"><i class="fas fa-fire me-2"></i>Density heatmap (objective 2)</h5>
+                            <div id="heatmapContainer" style="height: 340px; border-radius: 20px; background: rgba(255,255,255,0.2);"></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="bg-white bg-opacity-25 p-3 rounded-4 h-100" style="backdrop-filter: blur(4px);">
+                            <h5 class="fw-semibold mb-3"><i class="fas fa-bell me-2"></i>Recent alerts (objective 3)</h5>
+                            <div id="alertsList" style="max-height: 340px; overflow-y: auto;">
+                                <!-- alerts injected by main.js (original) will be glass items -->
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </section>
     </div>
+<!-- Footer -->
+    <footer class="glass-footer">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <h5 class="footer-title"><i class="fas fa-road me-2"></i>Pothole Detection ZW</h5>
+                    <p class="small opacity-75">Empowering communities to report road hazards and accelerate repairs across Zimbabwe. Transparent, real-time, and open data.</p>
+                </div>
+                <div class="col-md-2">
+                    <h6 class="text-white fw-semibold">Quick links</h6>
+                    <ul class="list-unstyled small">
+                        <li class="mb-2"><a href="index.html" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Report</a></li>
+                        <li class="mb-2"><a href="index.html#map" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Map view</a></li>
+                        <li class="mb-2"><a href="index.html#dashboard" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Dashboard</a></li>
+                        <li class="mb-2"><a href="gallery.html" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Gallery</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="text-white fw-semibold">Support</h6>
+                    <ul class="list-unstyled small">
+                        <li class="mb-2"><a href="#" class="text-decoration-none"><i class="fas fa-circle-info me-1"></i>FAQ</a></li>
+                        <li class="mb-2"><a href="#" class="text-decoration-none"><i class="fas fa-envelope me-1"></i>Contact</a></li>
+                        <li class="mb-2"><a href="#" class="text-decoration-none"><i class="fas fa-shield-alt me-1"></i>Privacy</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="text-white fw-semibold">Follow us</h6>
+                    <div class="social-icons">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                    </div>
+                    <p class="small mt-3 opacity-75"><i class="fas fa-phone-alt me-1"></i>+263 24 279 2350</p>
+                </div>
+            </div>
+            <div class="copyright">
+                <i class="far fa-copyright me-1"></i> 2026 Pothole Detection Zimbabwe. All rights reserved. | Made with <i class="fas fa-heart text-danger"></i> for safer roads.
+            </div>
+        </div>
+    </footer>
 
     <!-- Scripts - Note the order: config.js first, then main.js -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>

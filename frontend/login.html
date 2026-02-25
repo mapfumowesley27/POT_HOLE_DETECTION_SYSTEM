@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pothole Detection System - Zimbabwe</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.heat/dist/leaflet-heat.css">
+    <!-- Font Awesome for crisp icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Google Font: Inter (professional, clean) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..700;1,14..32,400..700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Login page specific enhancements - ULTRA COMPACT VERSION */
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: url('https://images.pexels.com/photos/1094545/pexels-photo-1094545.jpeg') no-repeat center center fixed;
+            background-size: cover;
+            position: relative;
+        }
+
+        /* Dark overlay for better readability */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 0;
+        }
+
+        nav, .main-content, footer {
+            position: relative;
+            z-index: 1;
+        }
+
+        .main-content {
+            flex: 1 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem 1rem;
+        }
+
+        .login-glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border-radius: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: 0 30px 50px -20px rgba(0, 20, 40, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.8);
+            padding: 1.2rem 1.2rem;
+            transition: transform 0.2s;
+            max-width: 380px;
+            margin: 0 auto;
+        }
+
+        #typing-text {
+            font-family: 'Courier New', monospace;
+            border-right: 3px solid #1e6df2;
+            padding-right: 8px;
+            animation: blink-caret 0.75s step-end infinite;
+            font-weight: 700;
+            color: #000000 !important;
+            font-size: 1.1rem;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 1.2rem;
+            padding: 0.6rem;
+            backdrop-filter: blur(4px);
+            margin-bottom: 1rem;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+        }
+
+        @keyframes blink-caret {
+            from, to { border-color: transparent; }
+            50% { border-color: #1e6df2; }
+        }
+
+        /* Dropdown styling */
+        .role-dropdown {
+            margin-bottom: 1rem;
+        }
+
+        .role-select {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            border-radius: 1.5rem !important;
+            padding: 0.5rem 1rem !important;
+            font-weight: 500;
+            color: #0f2b3f;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%231e6df2' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: calc(100% - 0.8rem) center;
+            padding-right: 2rem !important;
+            font-size: 0.9rem;
+        }
+
+        .role-select:focus {
+            background-color: white;
+            border-color: #1e6df2;
+            box-shadow: 0 0 0 4px rgba(30, 109, 242, 0.2);
+        }
+
+        .guest-report-card {
+            background: rgba(30, 109, 242, 0.15);
+            backdrop-filter: blur(8px);
+            border-radius: 1.2rem;
+            padding: 0.7rem 0.7rem;
+            text-align: center;
+            border: 2px dashed rgba(30, 109, 242, 0.4);
+            transition: all 0.2s;
+            cursor: pointer;
+            margin-top: 0.6rem;
+        }
+
+        .guest-report-card:hover {
+            background: rgba(30, 109, 242, 0.25);
+            border-color: #1e6df2;
+            transform: scale(1.02);
+        }
+
+        .guest-report-card i {
+            font-size: 1.4rem;
+            color: #1e6df2;
+            margin-bottom: 0.1rem;
+        }
+
+        .guest-report-card h4 {
+            font-size: 0.95rem;
+            margin-bottom: 0.1rem;
+            font-weight: 700;
+        }
+
+        .guest-report-card p {
+            font-size: 0.7rem;
+            margin-bottom: 0.1rem;
+        }
+
+        .guest-report-card small {
+            font-size: 0.7rem;
+        }
+
+        .alert-glass {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            border-radius: 1.2rem;
+            color: #0f2b3f;
+            padding: 0.6rem 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.8rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #0f2b3f;
+            margin-left: 0.5rem;
+            font-size: 0.8rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .glass-input {
+            padding: 0.5rem 1rem !important;
+            font-size: 0.85rem;
+            border-radius: 1.5rem !important;
+            background: rgba(255, 255, 255, 0.8) !important;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 0.8rem 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+        }
+
+        .divider span {
+            padding: 0 0.8rem;
+            color: #0f2b3f;
+            font-weight: 600;
+            font-size: 0.7rem;
+        }
+
+        .forgot-link, .register-link {
+            font-size: 0.8rem;
+            color: #1e6df2;
+        }
+
+        .btn-glass-primary {
+            padding: 0.5rem 1.5rem;
+            font-size: 0.85rem;
+            border-radius: 1.5rem !important;
+        }
+
+        /* Remove the old role selector styles */
+        .role-selector {
+            display: none;
+        }
+
+        /* Static footer */
+        .glass-footer {
+            background: rgba(10, 30, 45, 0.85);
+            backdrop-filter: blur(12px) saturate(200%);
+            -webkit-backdrop-filter: blur(12px) saturate(200%);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.85);
+            padding: 1rem 0 0.8rem;
+            font-size: 0.8rem;
+            width: 100%;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 2;
+        }
+
+        .glass-footer .row {
+            margin-bottom: 0.5rem;
+        }
+
+        .glass-footer h5, .glass-footer h6 {
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .glass-footer p, .glass-footer li {
+            font-size: 0.75rem;
+        }
+
+        .social-icons a {
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            font-size: 0.8rem;
+        }
+
+        .copyright {
+            padding-top: 0.6rem;
+            margin-top: 0.6rem;
+            font-size: 0.7rem;
+        }
+
+        /* Make header smaller */
+        .login-glass-card .text-center i {
+            font-size: 2rem !important;
+        }
+
+        .login-glass-card .text-center h3 {
+            font-size: 1.2rem;
+            margin-top: 0.2rem !important;
+        }
+
+        .login-glass-card .text-center p {
+            font-size: 0.75rem;
+            margin-bottom: 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- glass navigation (identical to gallery/page style) -->
+    <nav class="navbar navbar-expand-lg navbar-dark glass-nav sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.html"><i class="fas fa-road me-2" style="color: #8cb4ff;"></i>Pothole Detection · Zimbabwe</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="index.html#report"><i class="fas fa-plus-circle me-1"></i>Report</a></li>
+                    <li class="nav-item"><a class="nav-link" href="index.html#map"><i class="fas fa-map-marked-alt me-1"></i>Map</a></li>
+                    <li class="nav-item"><a class="nav-link" href="index.html#dashboard"><i class="fas fa-chart-pie me-1"></i>Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="gallery.html"><i class="fas fa-images me-1"></i>Gallery</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-5 col-xl-4">
+                    <div class="login-glass-card">
+                        <!-- Header - extra small -->
+                        <div class="text-center mb-2">
+                            <i class="fas fa-road-circle-check" style="font-size: 2rem; color: #1e6df2;"></i>
+                            <h3 class="fw-bold mt-1" style="color: #0f2b3f; font-size: 1.2rem;">Welcome Back</h3>
+                            <p class="text-muted small" style="font-size: 0.7rem; margin-bottom: 0.3rem;">Sign in to continue</p>
+                        </div>
+
+                        <!-- Typing Animation - visible black text -->
+                        <div class="mb-2">
+                            <h4 id="typing-text" class="text-center"></h4>
+                        </div>
+
+                        <!-- Role Dropdown -->
+                        <div class="role-dropdown">
+                            <label class="form-label">
+                                <i class="fas fa-user-tag me-2" style="color: #1e6df2;"></i>Login as
+                            </label>
+                            <select class="form-control role-select" id="roleSelect" onchange="setRole(this.value)">
+                                <option value="admin" selected>👑 Admin</option>
+                                <option value="manager">🛠️ Maintenance Manager</option>
+                            </select>
+                        </div>
+
+                        <!-- Login Form -->
+                        <form method="POST" action="{{ url_for('login') }}" id="loginForm">
+                            <input type="hidden" id="userRole" name="role" value="admin">
+
+                            <div class="mb-2">
+                                <label for="username" class="form-label">
+                                    <i class="fas fa-user me-2" style="color: #1e6df2;"></i>Username
+                                </label>
+                                <input type="text" class="form-control glass-input" id="username" name="username"
+                                       placeholder="Enter username" required
+                                       {% if locked %}disabled{% endif %}>
+                            </div>
+
+                            <div class="mb-2">
+                                <label for="password" class="form-label">
+                                    <i class="fas fa-lock me-2" style="color: #1e6df2;"></i>Password
+                                </label>
+                                <input type="password" class="form-control glass-input" id="password" name="password"
+                                       placeholder="Enter password" required
+                                       {% if locked %}disabled{% endif %}>
+                            </div>
+
+                            <button type="submit" class="btn btn-glass-primary w-100 py-2" id="submitBtn"
+                                    {% if locked %}disabled{% endif %} style="margin-top: 0.3rem;">
+                                <span id="buttonText">Login  <span id="roleDisplay"> </span></span>
+                                <div id="buttonSpinner" class="spinner-border spinner-border-sm d-none" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </button>
+                        </form>
+
+                        <!-- Forgot Password & Register - smaller -->
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <a href="{{ url_for('forgot_password') }}" class="forgot-link small"
+                               {% if locked %}style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                                <i class="fas fa-key me-1"></i>Forgot Password?
+                            </a>
+                            <span class="text-muted small">|</span>
+                            <a href="{{ url_for('register') }}" class="register-link small"
+                               {% if locked %}style="pointer-events: none; opacity: 0.5;"{% endif %}>
+                                Create Account <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+
+                        <!-- Divider - smaller -->
+                        <div class="divider">
+                            <span>OR</span>
+                        </div>
+
+                        <!-- Guest Report Option - extra compact -->
+                        <a href="index.html" class="text-decoration-none">
+                            <div class="guest-report-card">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <h4 class="fw-bold" style="color: #0f2b3f;">Report without account</h4>
+                                <p class="text-muted small mb-1">Quick reporting, no login needed</p>
+                                <small class="text-primary">Continue →</small>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer - static at bottom -->
+    <footer class="glass-footer">
+        <div class="container">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <h5 class="footer-title"><i class="fas fa-road me-2"></i>Pothole Detection ZW</h5>
+                    <p class="small opacity-75">Empowering communities to report road hazards across Zimbabwe.</p>
+                </div>
+                <div class="col-md-2">
+                    <h6 class="text-white fw-semibold">Quick links</h6>
+                    <ul class="list-unstyled small">
+                        <li class="mb-1"><a href="index.html" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Report</a></li>
+                        <li class="mb-1"><a href="index.html#map" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Map view</a></li>
+                        <li class="mb-1"><a href="index.html#dashboard" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Dashboard</a></li>
+                        <li class="mb-1"><a href="gallery.html" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Gallery</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="text-white fw-semibold">Support</h6>
+                    <ul class="list-unstyled small">
+                        <li class="mb-1"><a href="#" class="text-decoration-none"><i class="fas fa-circle-info me-1"></i>FAQ</a></li>
+                        <li class="mb-1"><a href="#" class="text-decoration-none"><i class="fas fa-envelope me-1"></i>Contact</a></li>
+                        <li class="mb-1"><a href="#" class="text-decoration-none"><i class="fas fa-shield-alt me-1"></i>Privacy</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="text-white fw-semibold">Follow us</h6>
+                    <div class="social-icons">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                    </div>
+                    <p class="small mt-2 opacity-75"><i class="fas fa-phone-alt me-1"></i>+263 24 279 2350</p>
+                </div>
+            </div>
+            <div class="copyright">
+                <i class="far fa-copyright me-1"></i> 2026 Pothole Detection Zimbabwe. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Typing Animation
+        document.addEventListener('DOMContentLoaded', function() {
+            const phrases = [
+                "Welcome to Pothole Therapy 🛣️",
+                "Making roads safer together 🤝",
+                "Report. Track. Repair. 🎯",
+                "Your feedback matters! 💡"
+            ];
+
+            const typingElement = document.getElementById('typing-text');
+            let phraseIndex = 0;
+            let charIndex = 0;
+            let isDeleting = false;
+            let timer;
+
+            function typeWriter() {
+                const currentPhrase = phrases[phraseIndex];
+
+                if (!isDeleting && charIndex < currentPhrase.length) {
+                    typingElement.textContent = currentPhrase.substring(0, charIndex + 1);
+                    charIndex++;
+                    timer = setTimeout(typeWriter, 100);
+                } else if (isDeleting && charIndex > 0) {
+                    typingElement.textContent = currentPhrase.substring(0, charIndex - 1);
+                    charIndex--;
+                    timer = setTimeout(typeWriter, 50);
+                } else {
+                    isDeleting = !isDeleting;
+                    if (!isDeleting) {
+                        phraseIndex = (phraseIndex + 1) % phrases.length;
+                    }
+                    timer = setTimeout(typeWriter, 1500);
+                }
+            }
+
+            typeWriter();
+
+            // Role selector via dropdown
+            window.setRole = function(role) {
+                document.getElementById('userRole').value = role;
+                document.getElementById('roleDisplay').textContent = role === 'admin' ? 'Admin' : 'Manager';
+            };
+
+            // Form submission handler
+            const loginForm = document.getElementById('loginForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const buttonText = document.getElementById('buttonText');
+            const buttonSpinner = document.getElementById('buttonSpinner');
+
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    e.preventDefault(); // Remove when backend ready
+
+                    // Show loading state
+                    submitBtn.disabled = true;
+                    buttonText.innerHTML = 'Logging in as ' +
+                        (document.getElementById('userRole').value === 'admin' ? 'Admin' : 'Manager');
+                    buttonSpinner.classList.remove('d-none');
+
+                    // Simulate login (remove when backend ready)
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1500);
+                });
+            }
+
+            // Countdown timer for locked state
+            {% if locked %}
+            let countdownElement = document.getElementById('countdown');
+            let seconds = {{ remaining_time }};
+
+            function updateCountdown() {
+                if (seconds > 0) {
+                    countdownElement.textContent = seconds;
+                    seconds--;
+                    setTimeout(updateCountdown, 1000);
+                } else {
+                    location.reload();
+                }
+            }
+            updateCountdown();
+            {% endif %}
+        });
+    </script>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

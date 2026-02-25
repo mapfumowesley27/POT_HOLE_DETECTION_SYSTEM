@@ -201,7 +201,7 @@ function setupRealTimeUpdates() {
     }, 30000);
 }
 
-// Add this function to handle image to base64 conversion
+//  function to handle image to base64 conversion
 function imageToBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();

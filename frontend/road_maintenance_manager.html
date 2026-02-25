@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance Manager - Pothole Detection Zimbabwe</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.heat/dist/leaflet-heat.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Keep all your existing CSS styles exactly as they are */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #eef2f6;
+            background-image: radial-gradient(circle at 10% 20%, rgba(0, 90, 130, 0.03) 0%, transparent 30%),
+                              radial-gradient(circle at 90% 70%, rgba(0, 120, 100, 0.03) 0%, transparent 30%);
+            min-height: 100vh;
+        }
+
+        .glass-nav {
+            background: rgba(10, 30, 45, 0.85);
+            backdrop-filter: blur(16px) saturate(200%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            color: white !important;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.85) !important;
+            font-weight: 500;
+            border-radius: 40px;
+            padding: 0.5rem 1.2rem !important;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: white !important;
+        }
+
+        .user-badge {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 40px;
+            padding: 0.4rem 1.2rem;
+            color: white;
+            font-weight: 500;
+        }
+
+        .user-badge i {
+            color: #ffa500;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(14px) saturate(180%);
+            border-radius: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 25px 40px -15px rgba(0, 20, 40, 0.2);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #0a1a2a;
+            border-left: 5px solid #fd7e14;
+            padding-left: 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title i {
+            color: #fd7e14;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(8px);
+            border-radius: 1.2rem;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            padding: 1.2rem;
+            text-align: center;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            color: #fd7e14;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0a1a2a;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #4a5568;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .alert-card {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(8px);
+            border-radius: 1rem;
+            border-left: 4px solid #dc3545;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .alert-card:hover {
+            background: rgba(255, 255, 255, 0.8);
+            transform: translateX(5px);
+        }
+
+        .alert-card.acknowledged {
+            border-left-color: #28a745;
+            opacity: 0.8;
+        }
+
+        .pothole-card {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(8px);
+            border-radius: 1rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+        }
+
+        .severity-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 2rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .severity-critical {
+            background: rgba(220, 53, 69, 0.15);
+            color: #dc3545;
+        }
+
+        .severity-high {
+            background: rgba(253, 126, 20, 0.15);
+            color: #fd7e14;
+        }
+
+        .severity-medium {
+            background: rgba(255, 193, 7, 0.15);
+            color: #ffc107;
+        }
+
+        .severity-low {
+            background: rgba(40, 167, 69, 0.15);
+            color: #28a745;
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(30, 109, 242, 0.3);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upload-area:hover {
+            border-color: #1e6df2;
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .upload-area i {
+            font-size: 2.5rem;
+            color: #1e6df2;
+        }
+
+        .manager-map {
+            height: 300px;
+            border-radius: 1rem;
+            border: 2px solid rgba(255, 255, 255, 0.7);
+        }
+
+        .btn-glass {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: 2rem;
+            padding: 0.5rem 1.2rem;
+            color: #0f2b3f;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-glass:hover {
+            background: white;
+            border-color: #fd7e14;
+            color: #fd7e14;
+        }
+
+        .btn-glass-primary {
+            background: linear-gradient(135deg, #fd7e14, #e06b05);
+            border: none;
+            border-radius: 2rem;
+            padding: 0.5rem 1.5rem;
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-glass-success {
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+            border: none;
+            border-radius: 2rem;
+            padding: 0.4rem 1rem;
+            color: white;
+            font-size: 0.85rem;
+        }
+
+        .btn-glass-warning {
+            background: linear-gradient(135deg, #ffc107, #d39e00);
+            border: none;
+            border-radius: 2rem;
+            padding: 0.4rem 1rem;
+            color: white;
+            font-size: 0.85rem;
+        }
+
+        .repair-image-preview {
+            width: 60px;
+            height: 60px;
+            border-radius: 0.5rem;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        .glass-footer {
+            background: rgba(10, 30, 45, 0.85);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.85);
+            padding: 1.5rem 0 1rem;
+            margin-top: 2rem;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 1.2rem;
+            height: 1.2rem;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid #fd7e14;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .glass-card {
+                padding: 1rem;
+            }
+            .stat-value {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark glass-nav sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.html"><i class="fas fa-road me-2" style="color: #8cb4ff;"></i>Pothole Detection · Zimbabwe</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <span class="user-badge" id="userBadge">
+                            <i class="fas fa-hard-hat me-1"></i> <span id="userName">Maintenance Manager</span>
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-1"></i>Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="glass-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="fw-bold" style="color: #0a1a2a;">Road Maintenance Manager</h1>
+                    <p class="text-muted mb-0"><i class="fas fa-tools me-2"></i>Verify, repair, and track pothole maintenance</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-glass" onclick="refreshAlerts()">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts Section -->
+        <div class="glass-card mb-4">
+            <h3 class="section-title"><i class="fas fa-bell"></i> Active Alerts <span class="badge bg-danger ms-2" id="alertCount">0</span></h3>
+            <div class="row">
+                <div class="col-md-12" id="alertsContainer">
+                    <div class="text-center py-4">
+                        <div class="loading-spinner mx-auto"></div>
+                        <p class="mt-2">Loading alerts...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="stat-card" onclick="filterByStatus('pending')">
+                    <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                    <div class="stat-value" id="pendingCount">0</div>
+                    <div class="stat-label">Pending Verification</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" onclick="filterByStatus('verified')">
+                    <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="stat-value" id="verifiedCount">0</div>
+                    <div class="stat-label">Verified</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" onclick="filterByStatus('in_progress')">
+                    <div class="stat-icon"><i class="fas fa-tools"></i></div>
+                    <div class="stat-value" id="inProgressCount">0</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card" onclick="filterByStatus('repaired')">
+                    <div class="stat-icon"><i class="fas fa-check-double"></i></div>
+                    <div class="stat-value" id="repairedToday">0</div>
+                    <div class="stat-label">Repaired Today</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Work Area -->
+        <div class="row">
+            <!-- Left Column: Potholes to Verify -->
+            <div class="col-md-6">
+                <div class="glass-card">
+                    <h3 class="section-title"><i class="fas fa-clipboard-check"></i> Potholes to Verify</h3>
+                    <div id="potholesToVerify">
+                        <div class="text-center py-4">
+                            <div class="loading-spinner mx-auto"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Repairs and Uploads -->
+            <div class="col-md-6">
+                <div class="glass-card">
+                    <h3 class="section-title"><i class="fas fa-camera"></i> Mark as Repaired</h3>
+
+                    <!-- Active Repairs -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold mb-3"><i class="fas fa-tools me-2" style="color: #fd7e14;"></i>Active Repairs</h6>
+                        <div id="activeRepairs">
+                            <div class="text-center py-3">
+                                <div class="loading-spinner mx-auto"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upload Area -->
+                    <div class="upload-area" onclick="document.getElementById('repairPhoto').click()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h6 class="mt-2">Click to upload repair photos</h6>
+                        <small class="text-muted">PNG, JPG up to 10MB</small>
+                        <input type="file" id="repairPhoto" class="d-none" accept="image/*" multiple onchange="handleRepairUpload(this)">
+                    </div>
+
+                    <!-- Recently Repaired -->
+                    <div class="mt-4">
+                        <h6 class="fw-bold mb-3"><i class="fas fa-history me-2" style="color: #28a745;"></i>Recently Repaired</h6>
+                        <div id="recentlyRepaired">
+                            <div class="text-center py-3">
+                                <div class="loading-spinner mx-auto"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map View -->
+        <div class="glass-card mt-4">
+            <h3 class="section-title"><i class="fas fa-map-marked-alt"></i> Pothole Distribution Map</h3>
+            <div id="managerMap" class="manager-map"></div>
+            <div class="mt-3 d-flex gap-2">
+                <button class="btn btn-glass btn-sm" onclick="filterMap('verified')">
+                    <i class="fas fa-layer-group me-1"></i>Show Verified
+                </button>
+                <button class="btn btn-glass btn-sm" onclick="filterMap('repaired')">
+                    <i class="fas fa-layer-group me-1"></i>Show Repaired
+                </button>
+                <button class="btn btn-glass btn-sm" onclick="filterMap('pending')">
+                    <i class="fas fa-layer-group me-1"></i>Show Pending
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="glass-footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12 text-center">
+                    <p class="mb-0">&copy; 2026 Pothole Detection Zimbabwe. All rights reserved. | Maintenance Manager Portal</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Image View Modal -->
+    <div class="modal fade glass-modal" id="imageViewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Pothole Image</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="modalImage" src="" class="img-fluid" style="max-height: 500px;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+    <script>
+        const API_BASE_URL = 'http://localhost:5000';
+        let map = null;
+        let mapMarkers = [];
+        let currentUser = null;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+            loadAlerts();
+            loadPotholeStats();
+            loadPotholesToVerify();
+            loadActiveRepairs();
+            loadRecentlyRepaired();
+            initializeMap();
+        });
+
+        // Check authentication
+        async function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Authentication failed');
+                }
+
+                const data = await response.json();
+                currentUser = data.user;
+
+                if (currentUser.role !== 'manager') {
+                    alert('Access denied. Manager privileges required.');
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                document.getElementById('userName').textContent = currentUser.full_name || 'Maintenance Manager';
+
+            } catch (error) {
+                console.error('Auth error:', error);
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Load alerts
+        async function loadAlerts() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/alerts`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+
+                const alerts = await response.json();
+                document.getElementById('alertCount').textContent = alerts.length;
+                displayAlerts(alerts);
+
+            } catch (error) {
+                console.error('Error loading alerts:', error);
+                document.getElementById('alertsContainer').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>Failed to load alerts
+                    </div>
+                `;
+            }
+        }
+
+        // Display alerts
+        function displayAlerts(alerts) {
+            const container = document.getElementById('alertsContainer');
+
+            if (!alerts || alerts.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>No active alerts
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = alerts.map(alert => `
+                <div class="alert-card ${alert.acknowledged ? 'acknowledged' : ''}" id="alert${alert.id}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-${alert.type === 'large_pothole' ? 'exclamation-triangle text-danger' : 'exclamation-circle text-warning'} me-3 fs-4"></i>
+                            <div>
+                                <h6 class="mb-0 fw-bold">${alert.message}</h6>
+                                <small class="text-muted">
+                                    ${new Date(alert.sent_at).toLocaleString()} •
+                                    Size: ${alert.pothole_size || 'Unknown'}
+                                </small>
+                            </div>
+                        </div>
+                        <div>
+                            ${!alert.acknowledged ?
+                                `<button class="btn btn-glass-warning me-2" onclick="acknowledgeAlert(${alert.id})">
+                                    <i class="fas fa-check me-1"></i>Acknowledge
+                                </button>` : ''
+                            }
+                            <button class="btn btn-glass-success" onclick="markForRepair(${alert.pothole_id})">
+                                <i class="fas fa-tools me-1"></i>Mark for Repair
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Load pothole statistics
+        async function loadPotholeStats() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/potholes`);
+                const potholes = await response.json();
+
+                const pending = potholes.filter(p => p.status === 'pending').length;
+                const verified = potholes.filter(p => p.status === 'verified').length;
+                const inProgress = potholes.filter(p => p.status === 'in_progress').length;
+
+                const today = new Date().toDateString();
+                const repairedToday = potholes.filter(p =>
+                    p.status === 'repaired' &&
+                    new Date(p.repaired_at).toDateString() === today
+                ).length;
+
+                document.getElementById('pendingCount').textContent = pending;
+                document.getElementById('verifiedCount').textContent = verified;
+                document.getElementById('inProgressCount').textContent = inProgress;
+                document.getElementById('repairedToday').textContent = repairedToday;
+
+            } catch (error) {
+                console.error('Error loading pothole stats:', error);
+            }
+        }
+
+        // Load potholes to verify
+        async function loadPotholesToVerify() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/potholes?status=pending`);
+                const potholes = await response.json();
+
+                const container = document.getElementById('potholesToVerify');
+
+                if (!potholes || potholes.length === 0) {
+                    container.innerHTML = '<p class="text-center text-muted">No potholes pending verification</p>';
+                    return;
+                }
+
+                container.innerHTML = potholes.map(p => `
+                    <div class="pothole-card">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <span class="severity-badge severity-${p.size_classification}">
+                                    ${p.size_classification}
+                                </span>
+                                <h6 class="mt-2 mb-1">${p.location_name || 'Unknown Location'}</h6>
+                                <small class="text-muted d-block">
+                                    Reported: ${new Date(p.reported_at).toLocaleString()} •
+                                    Diameter: ${p.diameter?.toFixed(2)}m
+                                </small>
+                                ${p.image_count ? `<small class="text-muted">Images: ${p.image_count} uploaded</small>` : ''}
+                            </div>
+                            <div class="text-end">
+                                <button class="btn btn-glass-success btn-sm mb-2" onclick="verifyPothole(${p.id})">
+                                    <i class="fas fa-check me-1"></i>Verify
+                                </button>
+                                <button class="btn btn-glass-warning btn-sm" onclick="rejectPothole(${p.id})">
+                                    <i class="fas fa-times me-1"></i>Reject
+                                </button>
+                            </div>
+                        </div>
+                        ${p.images ? `
+                            <div class="mt-2">
+                                ${p.images.slice(0, 3).map(img => `
+                                    <img src="${img}" class="repair-image-preview me-1" onclick="viewImage('${img}')">
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading potholes:', error);
+            }
+        }
+
+        // Load active repairs
+        async function loadActiveRepairs() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/repair-jobs?status=in_progress`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+
+                const repairs = await response.json();
+                const container = document.getElementById('activeRepairs');
+
+                if (!repairs || repairs.length === 0) {
+                    container.innerHTML = '<p class="text-center text-muted">No active repairs</p>';
+                    return;
+                }
+
+                container.innerHTML = repairs.map(r => `
+                    <div class="pothole-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">${r.location}</h6>
+                                <small class="text-muted">Started: ${new Date(r.assigned_at).toLocaleString()} • Crew: ${r.crew_name}</small>
+                            </div>
+                            <span class="badge bg-warning">In Progress</span>
+                        </div>
+                        <div class="mt-2">
+                            <button class="btn btn-glass-success btn-sm w-100" onclick="showRepairUpload(${r.pothole_id})">
+                                <i class="fas fa-cloud-upload-alt me-2"></i>Upload After-Photo & Mark Repaired
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading active repairs:', error);
+            }
+        }
+
+        // Load recently repaired
+        async function loadRecentlyRepaired() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/repair-jobs?status=completed&limit=5`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+
+                const repairs = await response.json();
+                const container = document.getElementById('recentlyRepaired');
+
+                if (!repairs || repairs.length === 0) {
+                    container.innerHTML = '<p class="text-center text-muted">No recently repaired potholes</p>';
+                    return;
+                }
+
+                container.innerHTML = repairs.map(r => `
+                    <div class="d-flex align-items-center mb-2">
+                        ${r.after_photo ?
+                            `<img src="${r.after_photo}" class="repair-image-preview me-2" onclick="viewImage('${r.after_photo}')">` :
+                            `<div class="repair-image-preview me-2 bg-secondary d-flex align-items-center justify-content-center">
+                                <i class="fas fa-image text-white"></i>
+                            </div>`
+                        }
+                        <div class="flex-grow-1">
+                            <small class="d-block"><strong>${r.location}</strong> - Repaired ${new Date(r.completed_at).toLocaleString()}</small>
+                            <small class="text-muted">by ${r.repaired_by || 'Manager'}</small>
+                        </div>
+                        <i class="fas fa-check-circle text-success"></i>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading recently repaired:', error);
+            }
+        }
+
+        // Initialize map
+        function initializeMap() {
+            map = L.map('managerMap').setView([-17.8252, 31.0335], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            loadMapMarkers();
+        }
+
+        // Load map markers
+        async function loadMapMarkers() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/potholes`);
+                const potholes = await response.json();
+
+                // Clear existing markers
+                mapMarkers.forEach(m => map.removeLayer(m));
+                mapMarkers = [];
+
+                // Add new markers
+                potholes.forEach(p => {
+                    const color = p.size_classification === 'large' ? '#dc3545' :
+                                 (p.size_classification === 'medium' ? '#fd7e14' : '#ffc107');
+
+                    const marker = L.circleMarker([p.latitude, p.longitude], {
+                        radius: 8,
+                        color: color,
+                        fillColor: color,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+
+                    marker.bindPopup(`
+                        <b>${p.location_name || 'Unknown Location'}</b><br>
+                        Severity: ${p.size_classification}<br>
+                        Status: ${p.status}<br>
+                        Diameter: ${p.diameter?.toFixed(2)}m
+                    `);
+
+                    mapMarkers.push(marker);
+                });
+
+            } catch (error) {
+                console.error('Error loading map markers:', error);
+            }
+        }
+
+        // Alert functions
+        async function acknowledgeAlert(alertId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/alerts/${alertId}/acknowledge`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+
+                if (response.ok) {
+                    loadAlerts();
+                    showNotification('Alert acknowledged successfully', 'success');
+                }
+
+            } catch (error) {
+                console.error('Error acknowledging alert:', error);
+            }
+        }
+
+        // Verify pothole
+        async function verifyPothole(potholeId) {
+            if (!confirm('Verify this pothole?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/potholes/${potholeId}/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    },
+                    body: JSON.stringify({ verified_by: currentUser.id })
+                });
+
+                if (response.ok) {
+                    showNotification('Pothole verified successfully', 'success');
+                    loadPotholesToVerify();
+                    loadPotholeStats();
+                    loadMapMarkers();
+                }
+
+            } catch (error) {
+                console.error('Error verifying pothole:', error);
+            }
+        }
+
+        // Reject pothole
+        async function rejectPothole(potholeId) {
+            if (!confirm('Reject this pothole report?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/potholes/${potholeId}/reject`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
+                });
+
+                if (response.ok) {
+                    showNotification('Pothole report rejected', 'warning');
+                    loadPotholesToVerify();
+                }
+
+            } catch (error) {
+                console.error('Error rejecting pothole:', error);
+            }
+        }
+
+        // Mark for repair
+        function markForRepair(potholeId) {
+            // Open modal or redirect to repair assignment
+            alert(`Mark pothole ${potholeId} for repair`);
+        }
+
+        // Handle repair upload
+        async function handleRepairUpload(input) {
+            if (input.files.length === 0) return;
+
+            const formData = new FormData();
+            for (let file of input.files) {
+                formData.append('photos', file);
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/repairs/upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showNotification(`${input.files.length} photo(s) uploaded successfully`, 'success');
+                    loadActiveRepairs();
+                    loadRecentlyRepaired();
+                }
+
+            } catch (error) {
+                console.error('Error uploading photos:', error);
+                showNotification('Failed to upload photos', 'danger');
+            }
+        }
+
+        // Filter by status
+        function filterByStatus(status) {
+            // Implement filter logic
+            alert(`Filtering by status: ${status}`);
+        }
+
+        // Filter map
+        function filterMap(status) {
+            // Implement map filter logic
+            alert(`Showing ${status} potholes on map`);
+        }
+
+        // View image
+        function viewImage(imageUrl) {
+            const modal = new bootstrap.Modal(document.getElementById('imageViewModal'));
+            document.getElementById('modalImage').src = imageUrl;
+            modal.show();
+        }
+
+        // Show repair upload
+        function showRepairUpload(potholeId) {
+            document.getElementById('repairPhoto').click();
+        }
+
+        // Refresh alerts
+        function refreshAlerts() {
+            loadAlerts();
+            loadPotholeStats();
+            loadMapMarkers();
+            showNotification('Data refreshed', 'success');
+        }
+
+        // Show notification
+        function showNotification(message, type) {
+            // Simple alert for now - can be enhanced with toast notifications
+            alert(message);
+        }
+
+        // Logout
+        function logout() {
+            localStorage.removeItem('authToken');
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>
