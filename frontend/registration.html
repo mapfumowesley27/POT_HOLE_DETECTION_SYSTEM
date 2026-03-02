@@ -19,7 +19,7 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            background: url('https://images.unsplash.com/photo-1566028286282-b62d79a4581b?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80') no-repeat center center fixed;
+            background: url('https://images.pexels.com/photos/1094545/pexels-photo-1094545.jpeg') no-repeat center center fixed;
             background-size: cover;
             position: relative;
         }
@@ -40,6 +40,7 @@
             z-index: 1;
         }
 
+        /* Glass Navigation */
         .glass-nav {
             background: rgba(10, 30, 45, 0.85);
             backdrop-filter: blur(16px) saturate(200%);
@@ -66,13 +67,14 @@
         }
 
         .main-content {
-            flex: 1;
+            flex: 1 0 auto;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 2rem 1rem;
+            padding: 1.5rem 1rem;
         }
 
+        /* Glass Card - Smaller and Centered */
         .glass-card {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(16px) saturate(180%);
@@ -80,8 +82,8 @@
             border-radius: 1.5rem;
             border: 1px solid rgba(255, 255, 255, 0.7);
             box-shadow: 0 30px 50px -20px rgba(0, 20, 40, 0.3);
-            padding: 2rem;
-            max-width: 500px;
+            padding: 1.5rem;
+            max-width: 450px;
             width: 100%;
             margin: 0 auto;
         }
@@ -89,14 +91,20 @@
         .glass-card h2 {
             color: #0a1a2a;
             font-weight: 700;
+            font-size: 1.5rem;
         }
 
+        .glass-card p {
+            font-size: 0.85rem;
+        }
+
+        /* Form Elements - Smaller */
         .glass-input {
             background: rgba(255, 255, 255, 0.7);
             border: 1px solid rgba(255, 255, 255, 0.9);
             border-radius: 1rem !important;
-            padding: 0.75rem 1rem !important;
-            font-size: 0.95rem;
+            padding: 0.5rem 0.8rem !important;
+            font-size: 0.85rem;
         }
 
         .glass-input:focus {
@@ -105,14 +113,22 @@
             box-shadow: 0 0 0 3px rgba(30, 109, 242, 0.2);
         }
 
+        .form-label {
+            font-size: 0.8rem;
+            margin-bottom: 0.2rem;
+            font-weight: 600;
+            color: #0f2b3f;
+        }
+
         .btn-glass-primary {
             background: linear-gradient(135deg, #1e6df2, #0a4abf);
             border: none;
             border-radius: 2rem;
-            padding: 0.75rem 1.5rem;
+            padding: 0.6rem 1.2rem;
             color: white;
             font-weight: 600;
             width: 100%;
+            font-size: 0.9rem;
             transition: all 0.2s;
         }
 
@@ -126,9 +142,10 @@
             backdrop-filter: blur(4px);
             border: 1px solid rgba(255, 255, 255, 0.8);
             border-radius: 2rem;
-            padding: 0.5rem 1.2rem;
+            padding: 0.4rem 1rem;
             color: #0f2b3f;
             font-weight: 500;
+            font-size: 0.8rem;
             transition: all 0.2s;
             text-decoration: none;
         }
@@ -145,65 +162,30 @@
             border: 1px solid rgba(255, 255, 255, 0.7);
             border-radius: 1rem;
             color: #0f2b3f;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
+            padding: 0.8rem;
+            margin-bottom: 1rem;
+            font-size: 0.8rem;
         }
 
-        .password-strength {
-            margin-top: 0.5rem;
-            font-size: 0.85rem;
-        }
-
-        .strength-bar {
-            height: 5px;
-            border-radius: 5px;
-            margin-top: 0.25rem;
-            transition: all 0.3s;
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 1.2rem;
-            height: 1.2rem;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-top: 3px solid #1e6df2;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 0.5rem;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .glass-footer {
-            background: rgba(10, 30, 45, 0.85);
-            backdrop-filter: blur(12px);
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-            color: rgba(255, 255, 255, 0.85);
-            padding: 1.5rem 0 1rem;
-            margin-top: 2rem;
-            text-align: center;
-        }
-
+        /* Role Selector - Compact */
         .role-selector {
             display: flex;
-            gap: 1rem;
-            margin: 1.5rem 0;
-            padding: 0.5rem;
+            gap: 0.5rem;
+            margin: 1rem 0;
+            padding: 0.3rem;
             background: rgba(255, 255, 255, 0.3);
-            border-radius: 3rem;
+            border-radius: 2rem;
         }
 
         .role-option {
             flex: 1;
             text-align: center;
-            padding: 0.75rem;
+            padding: 0.5rem 0.3rem;
             border-radius: 2rem;
             cursor: pointer;
             transition: all 0.2s;
             font-weight: 500;
+            font-size: 0.8rem;
         }
 
         .role-option.active {
@@ -212,17 +194,152 @@
         }
 
         .role-option i {
-            margin-right: 0.5rem;
+            margin-right: 0.3rem;
+            font-size: 0.8rem;
         }
 
+        /* Password Strength */
+        .password-strength {
+            margin-top: 0.3rem;
+            font-size: 0.75rem;
+        }
+
+        .strength-bar {
+            height: 4px;
+            border-radius: 4px;
+            margin-top: 0.2rem;
+            transition: all 0.3s;
+        }
+
+        /* Requirements List */
+        .requirements-list {
+            list-style: none;
+            padding-left: 0;
+            margin-top: 0.3rem;
+            font-size: 0.7rem;
+        }
+
+        .requirements-list li {
+            margin-bottom: 0.1rem;
+            color: #666;
+        }
+
+        .requirements-list li.valid {
+            color: #28a745;
+        }
+
+        .requirements-list li i {
+            width: 16px;
+            margin-right: 0.3rem;
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid #1e6df2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.4rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Footer - Exactly matching login page */
+        .glass-footer {
+            background: rgba(10, 30, 45, 0.85);
+            backdrop-filter: blur(12px) saturate(200%);
+            -webkit-backdrop-filter: blur(12px) saturate(200%);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.85);
+            padding: 1rem 0 0.8rem;
+            font-size: 0.8rem;
+            width: 100%;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 2;
+        }
+
+        .glass-footer .row {
+            margin-bottom: 0.5rem;
+        }
+
+        .glass-footer h5, .glass-footer h6 {
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .glass-footer p, .glass-footer li {
+            font-size: 0.75rem;
+        }
+
+        .glass-footer a {
+            color: #aac8ff;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .glass-footer a:hover {
+            color: white;
+            text-decoration: underline;
+        }
+
+        .footer-title {
+            font-weight: 600;
+            color: white;
+            margin-bottom: 0.8rem;
+        }
+
+        .social-icons a {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            margin-right: 0.3rem;
+            color: white;
+            transition: 0.2s;
+            font-size: 0.8rem;
+        }
+
+        .social-icons a:hover {
+            background: #1e6df2;
+            transform: scale(1.1);
+        }
+
+        .copyright {
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            padding-top: 0.6rem;
+            margin-top: 0.6rem;
+            font-size: 0.7rem;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.65);
+        }
+
+        /* Terms check */
         .terms-check {
-            margin: 1.5rem 0;
+            margin: 1rem 0;
+            font-size: 0.8rem;
+        }
+
+        .form-check-input {
+            margin-top: 0.2rem;
         }
 
         .invalid-feedback {
-            display: block;
-            font-size: 0.8rem;
-            color: #dc3545;
+            font-size: 0.7rem;
+        }
+
+        /* Username availability */
+        #usernameAvailability {
+            font-size: 0.7rem;
         }
     </style>
 </head>
@@ -232,8 +349,8 @@
         <div class="container">
             <a class="navbar-brand" href="index.html"><i class="fas fa-road me-2" style="color: #8cb4ff;"></i>Pothole Detection · Zimbabwe</a>
             <div class="ms-auto">
-                <a href="login.html" class="btn-glass text-decoration-none px-4 py-2">
-                    <i class="fas fa-sign-in-alt me-2"></i>Login
+                <a href="login.html" class="btn-glass text-decoration-none px-3 py-1">
+                    <i class="fas fa-sign-in-alt me-1"></i>Login
                 </a>
             </div>
         </div>
@@ -242,15 +359,15 @@
     <div class="main-content">
         <div class="container">
             <div class="row justify-content-center">
-                <div class="col-md-8 col-lg-6">
+                <div class="col-md-8 col-lg-5">
                     <div class="glass-card">
-                        <div class="text-center mb-4">
-                            <i class="fas fa-user-plus" style="font-size: 2.5rem; color: #1e6df2;"></i>
-                            <h2 class="fw-bold mt-2">Create Account</h2>
-                            <p class="text-muted">Join the pothole detection community</p>
+                        <div class="text-center mb-3">
+                            <i class="fas fa-user-plus" style="font-size: 2rem; color: #1e6df2;"></i>
+                            <h2 class="fw-bold mt-1">Create Account</h2>
+                            <p class="text-muted small">Join the pothole detection community</p>
                         </div>
 
-                        <!-- Role Selection -->
+                        <!-- Role Selection - Now with 3 roles -->
                         <div class="role-selector">
                             <div class="role-option active" onclick="setRole('reporter')" id="roleReporter">
                                 <i class="fas fa-user"></i> Reporter
@@ -258,79 +375,72 @@
                             <div class="role-option" onclick="setRole('manager')" id="roleManager">
                                 <i class="fas fa-hard-hat"></i> Manager
                             </div>
+                            <div class="role-option" onclick="setRole('admin')" id="roleAdmin">
+                                <i class="fas fa-user-shield"></i> Admin
+                            </div>
                         </div>
 
                         <!-- Registration Form -->
                         <form id="registerForm" onsubmit="handleRegistration(event)">
-                            <!-- Personal Information -->
                             <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label fw-semibold">
-                                        <i class="fas fa-user me-2" style="color: #1e6df2;"></i>First Name
-                                    </label>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label">First Name</label>
                                     <input type="text" class="form-control glass-input" id="firstName" required>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label fw-semibold">
-                                        <i class="fas fa-user me-2" style="color: #1e6df2;"></i>Last Name
-                                    </label>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label">Last Name</label>
                                     <input type="text" class="form-control glass-input" id="lastName" required>
                                 </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">
-                                    <i class="fas fa-envelope me-2" style="color: #1e6df2;"></i>Email Address
-                                </label>
+                            <div class="mb-2">
+                                <label class="form-label">Email Address</label>
                                 <input type="email" class="form-control glass-input" id="email" required>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">
-                                    <i class="fas fa-phone me-2" style="color: #1e6df2;"></i>Phone Number
-                                </label>
+                            <div class="mb-2">
+                                <label class="form-label">Phone Number</label>
                                 <input type="tel" class="form-control glass-input" id="phone" placeholder="+263 XX XXX XXXX">
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">
-                                    <i class="fas fa-map-marker-alt me-2" style="color: #1e6df2;"></i>Location / Zone
-                                </label>
+                            <div class="mb-2">
+                                <label class="form-label">Location / Zone</label>
                                 <select class="form-control glass-input" id="zone">
                                     <option value="">Select your area</option>
                                 </select>
                             </div>
 
-                            <!-- Account Information -->
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">
-                                    <i class="fas fa-user-circle me-2" style="color: #1e6df2;"></i>Username
-                                </label>
+                            <div class="mb-2">
+                                <label class="form-label">Username</label>
                                 <input type="text" class="form-control glass-input" id="username" required>
                                 <small class="text-muted" id="usernameAvailability"></small>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">
-                                    <i class="fas fa-lock me-2" style="color: #1e6df2;"></i>Password
-                                </label>
+                            <div class="mb-2">
+                                <label class="form-label">Password</label>
                                 <input type="password" class="form-control glass-input" id="password" required minlength="8">
+
+                                <!-- Password Requirements -->
+                                <div class="requirements-list">
+                                    <li id="req-length"><i class="far fa-circle"></i> At least 8 characters</li>
+                                    <li id="req-lowercase"><i class="far fa-circle"></i> One lowercase letter</li>
+                                    <li id="req-uppercase"><i class="far fa-circle"></i> One uppercase letter</li>
+                                    <li id="req-number"><i class="far fa-circle"></i> One number</li>
+                                    <li id="req-special"><i class="far fa-circle"></i> One special character (!@#$%^&*)</li>
+                                </div>
 
                                 <!-- Password Strength -->
                                 <div class="password-strength">
                                     <div class="d-flex justify-content-between">
-                                        <span>Password strength:</span>
+                                        <span>Strength:</span>
                                         <span id="strengthText">Weak</span>
                                     </div>
-                                    <div class="strength-bar" id="strengthBar" style="width: 33%; background: #dc3545;"></div>
+                                    <div class="strength-bar" id="strengthBar" style="width: 20%; background: #dc3545;"></div>
                                 </div>
-                                <small class="text-muted">Minimum 8 characters with letters and numbers</small>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">
-                                    <i class="fas fa-lock me-2" style="color: #1e6df2;"></i>Confirm Password
-                                </label>
+                            <div class="mb-2">
+                                <label class="form-label">Confirm Password</label>
                                 <input type="password" class="form-control glass-input" id="confirmPassword" required>
                                 <div id="passwordError" class="invalid-feedback"></div>
                             </div>
@@ -339,20 +449,18 @@
                             <div class="terms-check">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="terms" required>
-                                    <label class="form-check-label" for="terms">
-                                        I agree to the <a href="#" class="text-primary">Terms of Service</a> and
-                                        <a href="#" class="text-primary">Privacy Policy</a>
+                                    <label class="form-check-label small" for="terms">
+                                        I agree to the <a href="#" class="text-primary">Terms</a> and <a href="#" class="text-primary">Privacy</a>
                                     </label>
                                 </div>
-                                <div class="form-check mt-2">
+                                <div class="form-check mt-1">
                                     <input class="form-check-input" type="checkbox" id="newsletter">
-                                    <label class="form-check-label" for="newsletter">
-                                        I want to receive updates about road repairs (optional)
+                                    <label class="form-check-label small" for="newsletter">
+                                        Receive updates (optional)
                                     </label>
                                 </div>
                             </div>
 
-                            <!-- Hidden field for role -->
                             <input type="hidden" id="userRole" value="reporter">
 
                             <button type="submit" class="btn-glass-primary" id="registerBtn">
@@ -362,16 +470,20 @@
                         </form>
 
                         <!-- Login Link -->
-                        <div class="text-center mt-4">
-                            <p class="mb-0">Already have an account?
+                        <div class="text-center mt-3">
+                            <p class="small mb-0">Already have an account?
                                 <a href="login.html" class="text-primary fw-semibold">Sign In</a>
                             </p>
                         </div>
 
-                        <!-- Manager Note -->
-                        <div class="alert-glass mt-3" id="managerNote" style="display: none;">
-                            <i class="fas fa-info-circle me-2 text-info"></i>
-                            Manager accounts require admin approval. You'll receive an email when your account is activated.
+                        <!-- Role Notes -->
+                        <div class="alert-glass mt-2 small" id="managerNote" style="display: none;">
+                            <i class="fas fa-info-circle me-1 text-info"></i>
+                            Manager accounts require admin approval.
+                        </div>
+                        <div class="alert-glass mt-2 small" id="adminNote" style="display: none;">
+                            <i class="fas fa-info-circle me-1 text-info"></i>
+                            Admin accounts require super-admin approval.
                         </div>
                     </div>
                 </div>
@@ -379,15 +491,104 @@
         </div>
     </div>
 
-    <!-- Footer -->
+    <!-- Footer - Exactly matching login page -->
     <footer class="glass-footer">
         <div class="container">
-            <p class="mb-0">&copy; 2026 Pothole Detection Zimbabwe. All rights reserved.</p>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <h5 class="footer-title"><i class="fas fa-road me-2"></i>Pothole Detection ZW</h5>
+                    <p class="small opacity-75">Empowering communities to report road hazards across Zimbabwe.</p>
+                </div>
+                <div class="col-md-2">
+                    <h6 class="text-white fw-semibold">Quick links</h6>
+                    <ul class="list-unstyled small">
+                        <li class="mb-1"><a href="index.html" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Report</a></li>
+                        <li class="mb-1"><a href="index.html#map" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Map view</a></li>
+                        <li class="mb-1"><a href="index.html#dashboard" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Dashboard</a></li>
+                        <li class="mb-1"><a href="gallery.html" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Gallery</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="text-white fw-semibold">Support</h6>
+                    <ul class="list-unstyled small">
+                        <li class="mb-1"><a href="#" class="text-decoration-none"><i class="fas fa-circle-info me-1"></i>FAQ</a></li>
+                        <li class="mb-1"><a href="#" class="text-decoration-none"><i class="fas fa-envelope me-1"></i>Contact</a></li>
+                        <li class="mb-1"><a href="#" class="text-decoration-none"><i class="fas fa-shield-alt me-1"></i>Privacy</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="text-white fw-semibold">Follow us</h6>
+                    <div class="social-icons">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                    </div>
+                    <p class="small mt-2 opacity-75"><i class="fas fa-phone-alt me-1"></i>+263 24 279 2350</p>
+                </div>
+            </div>
+            <div class="copyright">
+                <i class="far fa-copyright me-1"></i> 2026 Pothole Detection Zimbabwe. All rights reserved.
+            </div>
         </div>
     </footer>
 
     <script>
         const API_BASE_URL = 'http://localhost:5000';
+
+        // All Zimbabwe Councils and Municipalities
+        const ZIMBABWE_ZONES = [
+            // Cities
+            { id: 1, name: 'Harare City Council' },
+            { id: 2, name: 'Bulawayo City Council' },
+            { id: 3, name: 'Chitungwiza Municipality' },
+            { id: 4, name: 'Mutare City Council' },
+            { id: 5, name: 'Gweru City Council' },
+            { id: 6, name: 'Kwekwe City Council' },
+            { id: 7, name: 'Kadoma City Council' },
+            { id: 8, name: 'Masvingo Municipality' },
+            { id: 9, name: 'Chinhoyi Municipality' },
+            { id: 10, name: 'Marondera Municipality' },
+
+            // Towns
+            { id: 11, name: 'Redcliff Municipality' },
+            { id: 12, name: 'Norton Town Council' },
+            { id: 13, name: 'Ruwa Local Board' },
+            { id: 14, name: 'Epworth Local Board' },
+            { id: 15, name: 'Victoria Falls Municipality' },
+            { id: 16, name: 'Hwange Town Council' },
+            { id: 17, name: 'Beitbridge Town Council' },
+            { id: 18, name: 'Plumtree Town Council' },
+            { id: 19, name: 'Rusape Town Council' },
+            { id: 20, name: 'Chipinge Town Council' },
+
+            // Rural District Councils
+            { id: 21, name: 'Goromonzi RDC' },
+            { id: 22, name: 'Murehwa RDC' },
+            { id: 23, name: 'Mutoko RDC' },
+            { id: 24, name: 'Chikomba RDC' },
+            { id: 25, name: 'Wedza RDC' },
+            { id: 26, name: 'Hwedza RDC' },
+            { id: 27, name: 'Buhera RDC' },
+            { id: 28, name: 'Makoni RDC' },
+            { id: 29, name: 'Nyanga RDC' },
+            { id: 30, name: 'Chimanimani RDC' },
+            { id: 31, name: 'Chipinge RDC' },
+            { id: 32, name: 'Bikita RDC' },
+            { id: 33, name: 'Zaka RDC' },
+            { id: 34, name: 'Masvingo RDC' },
+            { id: 35, name: 'Chivi RDC' },
+            { id: 36, name: 'Mberengwa RDC' },
+            { id: 37, name: 'Zvishavane RDC' },
+            { id: 38, name: 'Gokwe North RDC' },
+            { id: 39, name: 'Gokwe South RDC' },
+            { id: 40, name: 'Binga RDC' },
+            { id: 41, name: 'Lupane RDC' },
+            { id: 42, name: 'Hwange RDC' },
+            { id: 43, name: 'Tsholotsho RDC' },
+            { id: 44, name: 'Umguza RDC' },
+            { id: 45, name: 'Bubi RDC' }
+        ];
 
         // Load zones on page load
         document.addEventListener('DOMContentLoaded', function() {
@@ -396,23 +597,15 @@
             setupUsernameValidation();
         });
 
-        // Load zones from database
-        async function loadZones() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/zones`);
-                const zones = await response.json();
-
-                const select = document.getElementById('zone');
-                zones.forEach(zone => {
-                    const option = document.createElement('option');
-                    option.value = zone.id;
-                    option.textContent = zone.name;
-                    select.appendChild(option);
-                });
-
-            } catch (error) {
-                console.error('Error loading zones:', error);
-            }
+        // Load zones from local data
+        function loadZones() {
+            const select = document.getElementById('zone');
+            ZIMBABWE_ZONES.sort((a, b) => a.name.localeCompare(b.name)).forEach(zone => {
+                const option = document.createElement('option');
+                option.value = zone.id;
+                option.textContent = zone.name;
+                select.appendChild(option);
+            });
         }
 
         // Role selection
@@ -422,40 +615,56 @@
             // Update UI
             document.getElementById('roleReporter').classList.remove('active');
             document.getElementById('roleManager').classList.remove('active');
+            document.getElementById('roleAdmin').classList.remove('active');
 
             if (role === 'reporter') {
                 document.getElementById('roleReporter').classList.add('active');
                 document.getElementById('managerNote').style.display = 'none';
-            } else {
+                document.getElementById('adminNote').style.display = 'none';
+            } else if (role === 'manager') {
                 document.getElementById('roleManager').classList.add('active');
                 document.getElementById('managerNote').style.display = 'block';
+                document.getElementById('adminNote').style.display = 'none';
+            } else {
+                document.getElementById('roleAdmin').classList.add('active');
+                document.getElementById('managerNote').style.display = 'none';
+                document.getElementById('adminNote').style.display = 'block';
             }
         }
 
-        // Password strength checker
+        // Password strength checker with requirements
         function setupPasswordStrength() {
             document.getElementById('password').addEventListener('input', function(e) {
                 const password = e.target.value;
+
+                // Check requirements
+                const length = password.length >= 8;
+                const lowercase = /[a-z]/.test(password);
+                const uppercase = /[A-Z]/.test(password);
+                const number = /[0-9]/.test(password);
+                const special = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+                // Update requirement icons
+                document.getElementById('req-length').innerHTML = `<i class="fas fa-${length ? 'check-circle text-success' : 'circle text-muted'}"></i> At least 8 characters`;
+                document.getElementById('req-lowercase').innerHTML = `<i class="fas fa-${lowercase ? 'check-circle text-success' : 'circle text-muted'}"></i> One lowercase letter`;
+                document.getElementById('req-uppercase').innerHTML = `<i class="fas fa-${uppercase ? 'check-circle text-success' : 'circle text-muted'}"></i> One uppercase letter`;
+                document.getElementById('req-number').innerHTML = `<i class="fas fa-${number ? 'check-circle text-success' : 'circle text-muted'}"></i> One number`;
+                document.getElementById('req-special').innerHTML = `<i class="fas fa-${special ? 'check-circle text-success' : 'circle text-muted'}"></i> One special character (!@#$%^&*)`;
+
+                // Calculate strength
+                const requirements = [length, lowercase, uppercase, number, special];
+                const strength = requirements.filter(Boolean).length;
+
                 const strengthBar = document.getElementById('strengthBar');
                 const strengthText = document.getElementById('strengthText');
-
-                let strength = 0;
-
-                if (password.length >= 8) strength += 1;
-                if (password.match(/[a-z]+/)) strength += 1;
-                if (password.match(/[A-Z]+/)) strength += 1;
-                if (password.match(/[0-9]+/)) strength += 1;
-                if (password.match(/[$@#&!]+/)) strength += 1;
 
                 const strengthLevels = ['Weak', 'Fair', 'Good', 'Strong', 'Very Strong'];
                 const strengthColors = ['#dc3545', '#fd7e14', '#ffc107', '#28a745', '#20c997'];
 
-                const index = Math.min(strength, 4);
-                strengthBar.style.width = `${(index + 1) * 20}%`;
-                strengthBar.style.background = strengthColors[index];
-                strengthText.textContent = strengthLevels[index];
+                strengthBar.style.width = `${strength * 20}%`;
+                strengthBar.style.background = strengthColors[strength - 1] || '#dc3545';
+                strengthText.textContent = strengthLevels[strength - 1] || 'Weak';
 
-                // Check password match
                 validatePasswordMatch();
             });
 
@@ -503,7 +712,6 @@
                             availabilityEl.textContent = '✗ Username already taken';
                             availabilityEl.style.color = '#dc3545';
                         }
-
                     } catch (error) {
                         console.error('Error checking username:', error);
                     }
@@ -515,7 +723,6 @@
         async function handleRegistration(event) {
             event.preventDefault();
 
-            // Validate passwords match
             if (!validatePasswordMatch()) {
                 return;
             }
@@ -524,12 +731,10 @@
             const btnText = document.getElementById('registerBtnText');
             const spinner = document.getElementById('registerSpinner');
 
-            // Show loading state
             submitBtn.disabled = true;
             btnText.textContent = 'Creating Account...';
             spinner.classList.remove('d-none');
 
-            // Collect form data
             const userData = {
                 first_name: document.getElementById('firstName').value,
                 last_name: document.getElementById('lastName').value,
@@ -552,16 +757,13 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Show success message
                     showSuccessMessage(data);
                 } else {
-                    // Show error
                     showErrorMessage(data.message || 'Registration failed');
                     submitBtn.disabled = false;
                     btnText.textContent = 'Create Account';
                     spinner.classList.add('d-none');
                 }
-
             } catch (error) {
                 console.error('Error:', error);
                 showErrorMessage('Network error. Please try again.');
@@ -574,28 +776,24 @@
         // Show success message
         function showSuccessMessage(data) {
             const card = document.querySelector('.glass-card');
-
             card.innerHTML = `
                 <div class="text-center">
-                    <div class="mb-4">
-                        <i class="fas fa-check-circle" style="font-size: 4rem; color: #28a745;"></i>
+                    <div class="mb-3">
+                        <i class="fas fa-check-circle" style="font-size: 3rem; color: #28a745;"></i>
                     </div>
-                    <h4 class="fw-bold mb-3">Registration Successful!</h4>
-                    <p class="text-muted mb-4">
-                        ${data.message || 'Your account has been created successfully.'}
-                        ${data.role === 'manager' ?
-                            '<br>Your manager account is pending admin approval.' :
-                            'You can now login to your account.'}
+                    <h4 class="fw-bold mb-2">Registration Successful!</h4>
+                    <p class="small text-muted mb-3">
+                        ${data.message || 'Your account has been created.'}
+                        ${data.role === 'manager' ? '<br>Manager account pending approval.' : ''}
+                        ${data.role === 'admin' ? '<br>Admin account pending approval.' : ''}
                     </p>
-
                     <div class="d-grid gap-2">
-                        <a href="login.html" class="btn-glass-primary text-decoration-none">
-                            <i class="fas fa-sign-in-alt me-2"></i>Go to Login
+                        <a href="login.html" class="btn-glass-primary text-decoration-none py-2">
+                            <i class="fas fa-sign-in-alt me-1"></i>Go to Login
                         </a>
-
                         ${data.role === 'reporter' ? `
-                            <a href="index.html" class="btn-glass text-decoration-none mt-2">
-                                <i class="fas fa-exclamation-triangle me-2"></i>Report a Pothole
+                            <a href="index.html" class="btn-glass text-decoration-none mt-1 py-1">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Report a Pothole
                             </a>
                         ` : ''}
                     </div>
@@ -606,11 +804,8 @@
         // Show error message
         function showErrorMessage(message) {
             const alertDiv = document.createElement('div');
-            alertDiv.className = 'alert-glass text-danger mb-3';
-            alertDiv.innerHTML = `
-                <i class="fas fa-exclamation-circle me-2"></i>
-                ${message}
-            `;
+            alertDiv.className = 'alert-glass text-danger mb-2 small';
+            alertDiv.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i>${message}`;
 
             const form = document.getElementById('registerForm');
             form.insertBefore(alertDiv, form.firstChild);

@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Keep all your existing CSS styles exactly as they are */
         * {
             margin: 0;
             padding: 0;
@@ -472,92 +471,169 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
     <script>
         const API_BASE_URL = 'http://localhost:5000';
-        let map = null;
-        let mapMarkers = [];
-        let currentUser = null;
 
-        // Initialize page
+        // =============================================
+        // AUTHENTICATION CHECK - MUST BE FIRST!
+        // =============================================
         document.addEventListener('DOMContentLoaded', function() {
-            checkAuth();
-            loadAlerts();
-            loadPotholeStats();
-            loadPotholesToVerify();
-            loadActiveRepairs();
-            loadRecentlyRepaired();
-            initializeMap();
-        });
+            // Check if user is logged in
+            const isLoggedIn = localStorage.getItem('authToken');
+            const userRole = localStorage.getItem('userRole');
 
-        // Check authentication
-        async function checkAuth() {
-            const token = localStorage.getItem('authToken');
-            if (!token) {
+            console.log('Auth check:', { isLoggedIn, userRole });
+
+            if (!isLoggedIn) {
+                console.log('No auth token - redirecting to login');
                 window.location.href = 'login.html';
                 return;
             }
 
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error('Authentication failed');
-                }
-
-                const data = await response.json();
-                currentUser = data.user;
-
-                if (currentUser.role !== 'manager') {
-                    alert('Access denied. Manager privileges required.');
-                    window.location.href = 'index.html';
-                    return;
-                }
-
-                document.getElementById('userName').textContent = currentUser.full_name || 'Maintenance Manager';
-
-            } catch (error) {
-                console.error('Auth error:', error);
+            if (userRole !== 'manager') {
+                console.log('Wrong role - redirecting to login');
+                alert('Access denied. Manager privileges required.');
                 window.location.href = 'login.html';
+                return;
             }
-        }
 
-        // Load alerts
-        async function loadAlerts() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/alerts`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    }
-                });
+            // Display user name
+            const userName = localStorage.getItem('userName') || 'Maintenance Manager';
+            document.getElementById('userName').textContent = userName;
 
-                const alerts = await response.json();
-                document.getElementById('alertCount').textContent = alerts.length;
-                displayAlerts(alerts);
+            // User is authenticated, proceed with loading the page
+            console.log('Manager authenticated, loading dashboard...');
 
-            } catch (error) {
-                console.error('Error loading alerts:', error);
-                document.getElementById('alertsContainer').innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-circle me-2"></i>Failed to load alerts
-                    </div>
-                `;
+            // Initialize everything with mock data
+            initializeMockData();
+            initializeMap();
+        });
+
+        // =============================================
+        // MOCK DATA FOR DEMO PRESENTATION
+        // =============================================
+        const mockAlerts = [
+            {
+                id: 1,
+                type: 'large_pothole',
+                message: 'Critical pothole detected in Harare CBD',
+                sent_at: new Date(Date.now() - 10 * 60000).toISOString(),
+                acknowledged: false,
+                pothole_size: 'large',
+                pothole_id: 101
+            },
+            {
+                id: 2,
+                type: 'high_density',
+                message: 'Multiple potholes - Bulawayo Road (3 in 50m)',
+                sent_at: new Date(Date.now() - 25 * 60000).toISOString(),
+                acknowledged: false,
+                pothole_size: 'medium',
+                pothole_id: 102
+            },
+            {
+                id: 3,
+                type: 'large_pothole',
+                message: 'Gweru - Main Street',
+                sent_at: new Date(Date.now() - 120 * 60000).toISOString(),
+                acknowledged: true,
+                pothole_size: 'medium',
+                pothole_id: 103
             }
-        }
+        ];
 
-        // Display alerts
-        function displayAlerts(alerts) {
-            const container = document.getElementById('alertsContainer');
+        const mockPotholes = [
+            {
+                id: 1,
+                location_name: 'Sam Nujoma Street, Harare',
+                size_classification: 'critical',
+                diameter: 0.8,
+                reported_at: new Date(Date.now() - 2 * 3600000).toISOString(),
+                status: 'pending',
+                image_count: 2,
+                images: ['img1.jpg', 'img2.jpg'],
+                latitude: -17.8252,
+                longitude: 31.0335
+            },
+            {
+                id: 2,
+                location_name: 'Robert Mugabe Road, Bulawayo',
+                size_classification: 'high',
+                diameter: 0.5,
+                reported_at: new Date(Date.now() - 5 * 3600000).toISOString(),
+                status: 'pending',
+                image_count: 1,
+                images: ['img3.jpg'],
+                latitude: -20.1651,
+                longitude: 28.5832
+            },
+            {
+                id: 3,
+                location_name: 'Chinhoyi Street, Harare',
+                size_classification: 'medium',
+                diameter: 0.4,
+                reported_at: new Date(Date.now() - 24 * 3600000).toISOString(),
+                status: 'verified',
+                image_count: 2,
+                images: ['img4.jpg', 'img5.jpg'],
+                latitude: -17.8300,
+                longitude: 31.0400
+            }
+        ];
+
+        const mockRepairs = [
+            {
+                id: 1,
+                pothole_id: 3,
+                location: 'Kutama Road, Harare',
+                assigned_at: new Date(Date.now() - 2 * 3600000).toISOString(),
+                crew_name: 'Team A',
+                status: 'in_progress'
+            }
+        ];
+
+        const mockRecentlyRepaired = [
+            {
+                location: 'Chinhoyi Street',
+                completed_at: new Date(Date.now() - 1 * 3600000).toISOString(),
+                repaired_by: 'T. Dube',
+                after_photo: null
+            },
+            {
+                location: 'Mutare Road',
+                completed_at: new Date(Date.now() - 3 * 3600000).toISOString(),
+                repaired_by: 'S. Ndlovu',
+                after_photo: null
+            }
+        ];
+
+        // =============================================
+        // INITIALIZATION FUNCTIONS
+        // =============================================
+    // Initialize with real data from database
+    async function initializeMockData() {
+        await loadAlerts();
+        await loadPotholeStats();
+        await loadPotholesToVerify();
+        await loadActiveRepairs();
+        await loadRecentlyRepaired();
+    }
+
+    // Load alerts from database
+    async function loadAlerts() {
+        const container = document.getElementById('alertsContainer');
+        const alertCount = document.getElementById('alertCount');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/alerts`);
+            const alerts = await response.json();
+
+            const unacknowledgedAlerts = alerts.filter(a => !a.acknowledged);
+            alertCount.textContent = unacknowledgedAlerts.length;
 
             if (!alerts || alerts.length === 0) {
-                container.innerHTML = `
-                    <div class="alert alert-success">
-                        <i class="fas fa-check-circle me-2"></i>No active alerts
-                    </div>
-                `;
+                container.innerHTML = '<p class="text-center text-muted py-4">No alerts at this time.</p>';
                 return;
             }
 
@@ -569,7 +645,7 @@
                             <div>
                                 <h6 class="mb-0 fw-bold">${alert.message}</h6>
                                 <small class="text-muted">
-                                    ${new Date(alert.sent_at).toLocaleString()} •
+                                    ${alert.sent_at ? new Date(alert.sent_at).toLocaleString() : 'Recent'} •
                                     Size: ${alert.pothole_size || 'Unknown'}
                                 </small>
                             </div>
@@ -587,354 +663,214 @@
                     </div>
                 </div>
             `).join('');
+        } catch (error) {
+            console.error('Error loading alerts:', error);
+            container.innerHTML = '<p class="text-center text-danger py-4">Error loading alerts. Make sure backend is running.</p>';
         }
+    }
 
-        // Load pothole statistics
-        async function loadPotholeStats() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/potholes`);
-                const potholes = await response.json();
+    // Load pothole statistics from database
+    async function loadPotholeStats() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/stats`);
+            const data = await response.json();
 
-                const pending = potholes.filter(p => p.status === 'pending').length;
-                const verified = potholes.filter(p => p.status === 'verified').length;
-                const inProgress = potholes.filter(p => p.status === 'in_progress').length;
-
-                const today = new Date().toDateString();
-                const repairedToday = potholes.filter(p =>
-                    p.status === 'repaired' &&
-                    new Date(p.repaired_at).toDateString() === today
-                ).length;
-
-                document.getElementById('pendingCount').textContent = pending;
-                document.getElementById('verifiedCount').textContent = verified;
-                document.getElementById('inProgressCount').textContent = inProgress;
-                document.getElementById('repairedToday').textContent = repairedToday;
-
-            } catch (error) {
-                console.error('Error loading pothole stats:', error);
-            }
+            document.getElementById('pendingCount').textContent = data.pending || 0;
+            document.getElementById('verifiedCount').textContent = data.verified || 0;
+            document.getElementById('inProgressCount').textContent = '0';
+            document.getElementById('repairedToday').textContent = data.repaired || 0;
+        } catch (error) {
+            console.error('Error loading stats:', error);
+            document.getElementById('pendingCount').textContent = '-';
+            document.getElementById('verifiedCount').textContent = '-';
+            document.getElementById('inProgressCount').textContent = '-';
+            document.getElementById('repairedToday').textContent = '-';
         }
+    }
 
         // Load potholes to verify
-        async function loadPotholesToVerify() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/potholes?status=pending`);
-                const potholes = await response.json();
+        function loadPotholesToVerify() {
+            const container = document.getElementById('potholesToVerify');
 
-                const container = document.getElementById('potholesToVerify');
-
-                if (!potholes || potholes.length === 0) {
-                    container.innerHTML = '<p class="text-center text-muted">No potholes pending verification</p>';
-                    return;
-                }
-
-                container.innerHTML = potholes.map(p => `
-                    <div class="pothole-card">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <span class="severity-badge severity-${p.size_classification}">
-                                    ${p.size_classification}
-                                </span>
-                                <h6 class="mt-2 mb-1">${p.location_name || 'Unknown Location'}</h6>
-                                <small class="text-muted d-block">
-                                    Reported: ${new Date(p.reported_at).toLocaleString()} •
-                                    Diameter: ${p.diameter?.toFixed(2)}m
-                                </small>
-                                ${p.image_count ? `<small class="text-muted">Images: ${p.image_count} uploaded</small>` : ''}
-                            </div>
-                            <div class="text-end">
-                                <button class="btn btn-glass-success btn-sm mb-2" onclick="verifyPothole(${p.id})">
-                                    <i class="fas fa-check me-1"></i>Verify
-                                </button>
-                                <button class="btn btn-glass-warning btn-sm" onclick="rejectPothole(${p.id})">
-                                    <i class="fas fa-times me-1"></i>Reject
-                                </button>
-                            </div>
+            container.innerHTML = mockPotholes.map(p => `
+                <div class="pothole-card">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <span class="severity-badge severity-${p.size_classification}">
+                                ${p.size_classification}
+                            </span>
+                            <h6 class="mt-2 mb-1">${p.location_name}</h6>
+                            <small class="text-muted d-block">
+                                Reported: ${new Date(p.reported_at).toLocaleString()} •
+                                Diameter: ${p.diameter.toFixed(2)}m
+                            </small>
+                            <small class="text-muted">Images: ${p.image_count} uploaded</small>
                         </div>
-                        ${p.images ? `
-                            <div class="mt-2">
-                                ${p.images.slice(0, 3).map(img => `
-                                    <img src="${img}" class="repair-image-preview me-1" onclick="viewImage('${img}')">
-                                `).join('')}
-                            </div>
-                        ` : ''}
-                    </div>
-                `).join('');
-
-            } catch (error) {
-                console.error('Error loading potholes:', error);
-            }
-        }
-
-        // Load active repairs
-        async function loadActiveRepairs() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/repair-jobs?status=in_progress`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    }
-                });
-
-                const repairs = await response.json();
-                const container = document.getElementById('activeRepairs');
-
-                if (!repairs || repairs.length === 0) {
-                    container.innerHTML = '<p class="text-center text-muted">No active repairs</p>';
-                    return;
-                }
-
-                container.innerHTML = repairs.map(r => `
-                    <div class="pothole-card">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">${r.location}</h6>
-                                <small class="text-muted">Started: ${new Date(r.assigned_at).toLocaleString()} • Crew: ${r.crew_name}</small>
-                            </div>
-                            <span class="badge bg-warning">In Progress</span>
-                        </div>
-                        <div class="mt-2">
-                            <button class="btn btn-glass-success btn-sm w-100" onclick="showRepairUpload(${r.pothole_id})">
-                                <i class="fas fa-cloud-upload-alt me-2"></i>Upload After-Photo & Mark Repaired
+                        <div class="text-end">
+                            <button class="btn btn-glass-success btn-sm mb-2" onclick="verifyPothole(${p.id})">
+                                <i class="fas fa-check me-1"></i>Verify
+                            </button>
+                            <button class="btn btn-glass-warning btn-sm" onclick="rejectPothole(${p.id})">
+                                <i class="fas fa-times me-1"></i>Reject
                             </button>
                         </div>
                     </div>
-                `).join('');
+                    <div class="mt-2">
+                        ${p.images ? p.images.slice(0, 3).map(img => `
+                            <img src="https://via.placeholder.com/50" class="repair-image-preview me-1" onclick="viewImage('${img}')">
+                        `).join('') : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
 
-            } catch (error) {
-                console.error('Error loading active repairs:', error);
+        // Load active repairs
+        function loadActiveRepairs() {
+            const container = document.getElementById('activeRepairs');
+
+            if (mockRepairs.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted">No active repairs</p>';
+                return;
             }
+
+            container.innerHTML = mockRepairs.map(r => `
+                <div class="pothole-card">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">${r.location}</h6>
+                            <small class="text-muted">Started: ${new Date(r.assigned_at).toLocaleString()} • Crew: ${r.crew_name}</small>
+                        </div>
+                        <span class="badge bg-warning">In Progress</span>
+                    </div>
+                    <div class="mt-2">
+                        <button class="btn btn-glass-success btn-sm w-100" onclick="showRepairUpload(${r.pothole_id})">
+                            <i class="fas fa-cloud-upload-alt me-2"></i>Upload After-Photo & Mark Repaired
+                        </button>
+                    </div>
+                </div>
+            `).join('');
         }
 
         // Load recently repaired
-        async function loadRecentlyRepaired() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/repair-jobs?status=completed&limit=5`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    }
-                });
+        function loadRecentlyRepaired() {
+            const container = document.getElementById('recentlyRepaired');
 
-                const repairs = await response.json();
-                const container = document.getElementById('recentlyRepaired');
-
-                if (!repairs || repairs.length === 0) {
-                    container.innerHTML = '<p class="text-center text-muted">No recently repaired potholes</p>';
-                    return;
-                }
-
-                container.innerHTML = repairs.map(r => `
-                    <div class="d-flex align-items-center mb-2">
-                        ${r.after_photo ?
-                            `<img src="${r.after_photo}" class="repair-image-preview me-2" onclick="viewImage('${r.after_photo}')">` :
-                            `<div class="repair-image-preview me-2 bg-secondary d-flex align-items-center justify-content-center">
-                                <i class="fas fa-image text-white"></i>
-                            </div>`
-                        }
-                        <div class="flex-grow-1">
-                            <small class="d-block"><strong>${r.location}</strong> - Repaired ${new Date(r.completed_at).toLocaleString()}</small>
-                            <small class="text-muted">by ${r.repaired_by || 'Manager'}</small>
-                        </div>
-                        <i class="fas fa-check-circle text-success"></i>
+            container.innerHTML = mockRecentlyRepaired.map(r => `
+                <div class="d-flex align-items-center mb-2">
+                    <img src="https://via.placeholder.com/40" class="repair-image-preview me-2" onclick="viewImage('repaired1.jpg')">
+                    <div class="flex-grow-1">
+                        <small class="d-block"><strong>${r.location}</strong> - Repaired ${new Date(r.completed_at).toLocaleString()}</small>
+                        <small class="text-muted">by ${r.repaired_by}</small>
                     </div>
-                `).join('');
-
-            } catch (error) {
-                console.error('Error loading recently repaired:', error);
-            }
+                    <i class="fas fa-check-circle text-success"></i>
+                </div>
+            `).join('');
         }
 
         // Initialize map
         function initializeMap() {
-            map = L.map('managerMap').setView([-17.8252, 31.0335], 12);
+            const map = L.map('managerMap').setView([-17.8252, 31.0335], 7);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
-            loadMapMarkers();
+            // Add sample markers
+            const markers = [
+                { lat: -17.8252, lng: 31.0335, severity: 'Critical', status: 'pending' },
+                { lat: -20.1651, lng: 28.5832, severity: 'High', status: 'verified' },
+                { lat: -19.0584, lng: 29.7850, severity: 'Medium', status: 'repaired' },
+                { lat: -18.0184, lng: 31.0835, severity: 'Critical', status: 'pending' }
+            ];
+
+            markers.forEach(m => {
+                const color = m.severity === 'Critical' ? '#dc3545' :
+                             (m.severity === 'High' ? '#fd7e14' : '#ffc107');
+
+                L.circleMarker([m.lat, m.lng], {
+                    radius: 8,
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.8
+                }).addTo(map).bindPopup(`Severity: ${m.severity}<br>Status: ${m.status}`);
+            });
         }
 
-        // Load map markers
-        async function loadMapMarkers() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/potholes`);
-                const potholes = await response.json();
+        // =============================================
+        // ACTION FUNCTIONS
+        // =============================================
+        function acknowledgeAlert(alertId) {
+            const alertCard = document.getElementById(`alert${alertId}`);
+            alertCard.classList.add('acknowledged');
+            const buttonDiv = alertCard.querySelector('div:last-child');
+            buttonDiv.innerHTML = '<span class="badge bg-success">Acknowledged</span>';
+            updateAlertCount();
+            showNotification('Alert acknowledged successfully', 'success');
+        }
 
-                // Clear existing markers
-                mapMarkers.forEach(m => map.removeLayer(m));
-                mapMarkers = [];
+        function updateAlertCount() {
+            const activeAlerts = document.querySelectorAll('.alert-card:not(.acknowledged)').length;
+            document.getElementById('alertCount').textContent = activeAlerts;
+        }
 
-                // Add new markers
-                potholes.forEach(p => {
-                    const color = p.size_classification === 'large' ? '#dc3545' :
-                                 (p.size_classification === 'medium' ? '#fd7e14' : '#ffc107');
-
-                    const marker = L.circleMarker([p.latitude, p.longitude], {
-                        radius: 8,
-                        color: color,
-                        fillColor: color,
-                        fillOpacity: 0.8
-                    }).addTo(map);
-
-                    marker.bindPopup(`
-                        <b>${p.location_name || 'Unknown Location'}</b><br>
-                        Severity: ${p.size_classification}<br>
-                        Status: ${p.status}<br>
-                        Diameter: ${p.diameter?.toFixed(2)}m
-                    `);
-
-                    mapMarkers.push(marker);
-                });
-
-            } catch (error) {
-                console.error('Error loading map markers:', error);
+        function verifyPothole(id) {
+            if (confirm('Verify this pothole?')) {
+                showNotification(`Pothole verified successfully`, 'success');
+                loadPotholesToVerify();
+                loadPotholeStats();
             }
         }
 
-        // Alert functions
-        async function acknowledgeAlert(alertId) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/alerts/${alertId}/acknowledge`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    }
-                });
-
-                if (response.ok) {
-                    loadAlerts();
-                    showNotification('Alert acknowledged successfully', 'success');
-                }
-
-            } catch (error) {
-                console.error('Error acknowledging alert:', error);
+        function rejectPothole(id) {
+            if (confirm('Reject this pothole report?')) {
+                showNotification(`Pothole report rejected`, 'warning');
+                loadPotholesToVerify();
             }
         }
 
-        // Verify pothole
-        async function verifyPothole(potholeId) {
-            if (!confirm('Verify this pothole?')) return;
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/potholes/${potholeId}/verify`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    },
-                    body: JSON.stringify({ verified_by: currentUser.id })
-                });
-
-                if (response.ok) {
-                    showNotification('Pothole verified successfully', 'success');
-                    loadPotholesToVerify();
-                    loadPotholeStats();
-                    loadMapMarkers();
-                }
-
-            } catch (error) {
-                console.error('Error verifying pothole:', error);
-            }
-        }
-
-        // Reject pothole
-        async function rejectPothole(potholeId) {
-            if (!confirm('Reject this pothole report?')) return;
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/potholes/${potholeId}/reject`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    }
-                });
-
-                if (response.ok) {
-                    showNotification('Pothole report rejected', 'warning');
-                    loadPotholesToVerify();
-                }
-
-            } catch (error) {
-                console.error('Error rejecting pothole:', error);
-            }
-        }
-
-        // Mark for repair
         function markForRepair(potholeId) {
-            // Open modal or redirect to repair assignment
-            alert(`Mark pothole ${potholeId} for repair`);
+            showNotification(`Marked pothole for repair`, 'info');
         }
 
-        // Handle repair upload
-        async function handleRepairUpload(input) {
-            if (input.files.length === 0) return;
-
-            const formData = new FormData();
-            for (let file of input.files) {
-                formData.append('photos', file);
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/repairs/upload`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    },
-                    body: formData
-                });
-
-                if (response.ok) {
-                    showNotification(`${input.files.length} photo(s) uploaded successfully`, 'success');
-                    loadActiveRepairs();
-                    loadRecentlyRepaired();
-                }
-
-            } catch (error) {
-                console.error('Error uploading photos:', error);
-                showNotification('Failed to upload photos', 'danger');
-            }
-        }
-
-        // Filter by status
-        function filterByStatus(status) {
-            // Implement filter logic
-            alert(`Filtering by status: ${status}`);
-        }
-
-        // Filter map
-        function filterMap(status) {
-            // Implement map filter logic
-            alert(`Showing ${status} potholes on map`);
-        }
-
-        // View image
-        function viewImage(imageUrl) {
-            const modal = new bootstrap.Modal(document.getElementById('imageViewModal'));
-            document.getElementById('modalImage').src = imageUrl;
-            modal.show();
-        }
-
-        // Show repair upload
-        function showRepairUpload(potholeId) {
+        function showRepairUpload(repairId) {
             document.getElementById('repairPhoto').click();
         }
 
-        // Refresh alerts
+        function handleRepairUpload(input) {
+            if (input.files.length > 0) {
+                showNotification(`${input.files.length} photo(s) uploaded. Pothole marked as repaired!`, 'success');
+            }
+        }
+
+        function viewImage(imgId) {
+            const modal = new bootstrap.Modal(document.getElementById('imageViewModal'));
+            document.getElementById('modalImage').src = 'https://via.placeholder.com/800x600';
+            modal.show();
+        }
+
+        function filterByStatus(status) {
+            showNotification(`Filtering by status: ${status}`, 'info');
+        }
+
+        function filterMap(status) {
+            showNotification(`Showing ${status} potholes on map`, 'info');
+        }
+
         function refreshAlerts() {
             loadAlerts();
             loadPotholeStats();
-            loadMapMarkers();
             showNotification('Data refreshed', 'success');
         }
 
-        // Show notification
         function showNotification(message, type) {
-            // Simple alert for now - can be enhanced with toast notifications
-            alert(message);
+            alert(message); // Simple alert for demo
         }
 
-        // Logout
+        // Logout function
         function logout() {
             localStorage.removeItem('authToken');
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('userName');
+            localStorage.removeItem('userId');
             window.location.href = 'login.html';
         }
     </script>

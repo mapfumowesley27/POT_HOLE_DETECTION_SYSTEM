@@ -1,7 +1,7 @@
 
 const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'http://localhost:5000';
 // Initialize maps and global variables
-let mainMap, reportMap, heatLayer;
+let mainMap, reportMap, heatMap, heatLayer;
 let markers = [];
 
 // Initialize when page loads
@@ -32,6 +32,12 @@ function initMaps() {
             `${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`;
         window.selectedLocation = e.latlng;
     });
+
+    // Initialize heatmap map (separate from main map for dashboard heatmap)
+    heatMap = L.map('heatmapContainer').setView([-17.8252, 31.0335], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(heatMap);
 }
 
 function setupEventListeners() {
@@ -91,8 +97,8 @@ async function loadPotholeData() {
             markers.push(marker);
         });
 
-        // Update heatmap
-        updateHeatmap(potholes);
+        // Update heatmap with density data
+        await updateHeatmap(potholes);
 
     } catch (error) {
         console.error('Error loading pothole data:', error);
@@ -117,22 +123,62 @@ function getMarkerColor(size) {
     }
 }
 
-function updateHeatmap(potholes) {
-    // Create heatmap data (Objective 2)
-    const heatData = potholes
-        .filter(p => p.status !== 'repaired')
-        .map(p => [p.latitude, p.longitude, 1]); // Intensity 1 for each pothole
+async function updateHeatmap(potholes) {
+    try {
+        // Fetch density data from API (calculates potholes per 100m²)
+        const response = await fetch(`${API_BASE_URL}/api/potholes/density`);
+        const densityData = await response.json();
 
-    if (heatLayer) {
-        mainMap.removeLayer(heatLayer);
+        let heatData;
+        
+        // Use density API data if available, otherwise fallback to simple pothole data
+        if (densityData.heatmap_data && densityData.heatmap_data.length > 0) {
+            // Use the calculated density heatmap data
+            heatData = densityData.heatmap_data;
+            
+            // Log high density areas for debugging
+            if (densityData.high_density_areas && densityData.high_density_areas.length > 0) {
+                console.log('High density areas detected:', densityData.high_density_areas);
+            }
+        } else {
+            // Fallback to simple pothole-based heatmap
+            heatData = potholes
+                .filter(p => p.status !== 'repaired')
+                .map(p => [p.latitude, p.longitude, 1]);
+        }
+
+        if (heatLayer) {
+            mainMap.removeLayer(heatLayer);
+        }
+
+        // Create heatmap with intensity based on density
+        heatLayer = L.heatLayer(heatData, {
+            radius: 25,
+            blur: 15,
+            maxZoom: 17,
+            // Red gradient for high density areas (5+ per 100m²)
+            gradient: {0.4: 'blue', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red'}
+        }).addTo(mainMap);
+        
+        return densityData;
+    } catch (error) {
+        console.error('Error loading density data:', error);
+        // Fallback to simple heatmap
+        const heatData = potholes
+            .filter(p => p.status !== 'repaired')
+            .map(p => [p.latitude, p.longitude, 1]);
+
+        if (heatLayer) {
+            mainMap.removeLayer(heatLayer);
+        }
+
+        heatLayer = L.heatLayer(heatData, {
+            radius: 25,
+            blur: 15,
+            maxZoom: 17,
+            gradient: {0.4: 'blue', 0.6: 'lime', 0.8: 'red'}
+        }).addTo(mainMap);
     }
-
-    heatLayer = L.heatLayer(heatData, {
-        radius: 25,
-        blur: 15,
-        maxZoom: 17,
-        gradient: {0.4: 'blue', 0.6: 'lime', 0.8: 'red'}
-    }).addTo(mainMap);
 }
 
 async function loadDashboardStats() {

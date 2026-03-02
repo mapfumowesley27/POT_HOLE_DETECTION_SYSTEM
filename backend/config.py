@@ -29,3 +29,11 @@ class Config:
 
     # Secret key for sessions
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+
+    # Email configuration (add to your config)
+    MAIL_SERVER = 'smtp.gmail.com'
+    MAIL_PORT = 587
+    MAIL_USE_TLS = True
+    MAIL_USERNAME = 'noreply@potholezw.gov.zw'
+    MAIL_PASSWORD = 'your-app-password'
+    FRONTEND_URL = 'http://localhost:5000'

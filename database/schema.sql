@@ -57,8 +57,8 @@ CREATE TABLE users (
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'manager', 'viewer')),
-    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended')),
+    role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'manager', 'viewer', 'reporter')),
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'suspended', 'pending')),
     last_login TIMESTAMP,
     last_active TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -68,14 +68,10 @@ CREATE TABLE users (
     zone_id INTEGER REFERENCES zones(id) -- For managers assigned to specific zones
 );
 
--- Login attempts for security
-CREATE TABLE login_attempts (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(50) NOT NULL,
-    ip_address INET,
-    attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    success BOOLEAN DEFAULT FALSE
-);
+
+-- Index for quick lookups (move this right after the table)
+CREATE INDEX idx_login_attempts_username ON login_attempts(username);
+CREATE INDEX idx_login_attempts_time ON login_attempts(attempt_time);
 
 -- Session management
 CREATE TABLE user_sessions (
@@ -177,6 +173,16 @@ CREATE TABLE materials (
     last_restocked TIMESTAMP
 );
 
+-- Login attempts for security (ONLY ONCE!)
+CREATE TABLE login_attempts (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    ip_address INET,
+    attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    success BOOLEAN DEFAULT FALSE
+);
+
+
 -- Repair materials used (junction table)
 CREATE TABLE repair_materials (
     id SERIAL PRIMARY KEY,
@@ -198,7 +204,7 @@ CREATE TABLE reports (
     data_summary JSONB -- Store summary data for quick access
 );
 
--- Insert sample potholes (if you don't have any yet)
+-- Insert sample potholes
 INSERT INTO potholes (location, latitude, longitude, size_classification, diameter, status, reported_by) VALUES
 (ST_SetSRID(ST_MakePoint(31.0335, -17.8252), 4326), -17.8252, 31.0335, 'large', 1.2, 'pending', 'anonymous'),
 (ST_SetSRID(ST_MakePoint(31.0400, -17.8300), 4326), -17.8300, 31.0400, 'medium', 0.5, 'verified', 'manager1'),
@@ -209,9 +215,13 @@ INSERT INTO alerts (type, pothole_id, message) VALUES
 ('large_pothole', 1, 'Critical pothole detected in Harare CBD requiring immediate attention'),
 ('high_density', NULL, 'High density area detected in Bulawayo with multiple potholes');
 
-
 -- Insert sample zones for Zimbabwe
 INSERT INTO zones (name, boundary) VALUES
 ('Harare CBD', ST_GeomFromText('POLYGON((31.0 -17.8, 31.1 -17.8, 31.1 -17.9, 31.0 -17.9, 31.0 -17.8))', 4326)),
 ('Mbare', ST_GeomFromText('POLYGON((31.1 -17.9, 31.2 -17.9, 31.2 -18.0, 31.1 -18.0, 31.1 -17.9))', 4326)),
 ('Bulawayo CBD', ST_GeomFromText('POLYGON((28.5 -20.1, 28.6 -20.1, 28.6 -20.2, 28.5 -20.2, 28.5 -20.1))', 4326));
+
+-- Insert a test user (password: 'password123')
+-- Note: In production, use proper password hashing
+INSERT INTO users (username, email, password_hash, full_name, role, status, phone_number) VALUES
+('admin', 'admin@pothole.gov.zw', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'System Admin', 'admin', 'active', '+263 77 123 4567');
