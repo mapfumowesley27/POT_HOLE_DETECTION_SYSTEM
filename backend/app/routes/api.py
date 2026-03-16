@@ -624,46 +624,7 @@ def get_monthly_stats():
         return jsonify({'error': str(e)}), 400
 
 
-@bp.route('/repair-jobs', methods=['GET'])
-def get_repair_jobs():
-    """Return repair jobs with optional status filter"""
-    try:
-        from app.models.repair import RepairJob  # Create this model
 
-        status = request.args.get('status')
-        limit = request.args.get('limit', type=int)
-
-        query = RepairJob.query
-        if status:
-            query = query.filter_by(status=status)
-
-        if limit:
-            query = query.limit(limit)
-
-        jobs = query.order_by(RepairJob.assigned_at.desc()).all()
-
-        result = []
-        for j in jobs:
-            job_dict = {
-                'id': j.id,
-                'pothole_id': j.pothole_id,
-                'crew_id': j.crew_id,
-                'crew_name': j.crew.name if j.crew else None,
-                'assigned_at': j.assigned_at.isoformat() if j.assigned_at else None,
-                'started_at': j.started_at.isoformat() if j.started_at else None,
-                'completed_at': j.completed_at.isoformat() if j.completed_at else None,
-                'status': j.status,
-                'notes': j.notes,
-                'location': get_location_name_from_pothole(j.pothole_id),
-                'after_photo': j.after_photos[0] if j.after_photos else None,
-                'repaired_by': j.quality_check_by  # This might be different
-            }
-            result.append(job_dict)
-
-        return jsonify(result)
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
 
 
 @bp.route('/potholes/<int:pothole_id>/verify', methods=['POST'])
@@ -1173,6 +1134,335 @@ def login():
             'success': False,
             'message': 'Server error. Please try again.'
         }), 500
+# =====================================================
+# MAINTENANCE CREW MANAGEMENT
+# =====================================================
+
+@bp.route('/crews', methods=['GET'])
+def get_crews():
+    """Get all maintenance crews"""
+    try:
+        from app.models.maintenance import MaintenanceCrew
+        crews = MaintenanceCrew.query.all()
+        return jsonify([c.to_dict() for c in crews])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/crews', methods=['POST'])
+def create_crew():
+    """Create a new maintenance crew"""
+    try:
+        from app.models.maintenance import MaintenanceCrew
+        data = request.json
+        crew = MaintenanceCrew(
+            name=data['name'],
+            supervisor_id=data.get('supervisor_id'),
+            zone_id=data.get('zone_id'),
+            contact_number=data.get('contact_number')
+        )
+        db.session.add(crew)
+        db.session.commit()
+        return jsonify(crew.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/crews/<int:crew_id>', methods=['PUT'])
+def update_crew(crew_id):
+    """Update a crew"""
+    try:
+        from app.models.maintenance import MaintenanceCrew
+        crew = MaintenanceCrew.query.get_or_404(crew_id)
+        data = request.json
+        if 'name' in data: crew.name = data['name']
+        if 'supervisor_id' in data: crew.supervisor_id = data['supervisor_id']
+        if 'zone_id' in data: crew.zone_id = data['zone_id']
+        if 'contact_number' in data: crew.contact_number = data['contact_number']
+        if 'active' in data: crew.active = data['active']
+        db.session.commit()
+        return jsonify(crew.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/crews/<int:crew_id>', methods=['DELETE'])
+def delete_crew(crew_id):
+    """Delete a crew"""
+    try:
+        from app.models.maintenance import MaintenanceCrew
+        crew = MaintenanceCrew.query.get_or_404(crew_id)
+        db.session.delete(crew)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/crew-members', methods=['GET'])
+def get_crew_members():
+    """Get crew members"""
+    try:
+        from app.models.maintenance import CrewMember
+        crew_id = request.args.get('crew_id', type=int)
+        query = CrewMember.query
+        if crew_id:
+            query = query.filter_by(crew_id=crew_id)
+        members = query.all()
+        return jsonify([m.to_dict() for m in members])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/crew-members', methods=['POST'])
+def create_crew_member():
+    """Add a crew member"""
+    try:
+        from app.models.maintenance import CrewMember
+        data = request.json
+        member = CrewMember(
+            crew_id=data['crew_id'],
+            user_id=data.get('user_id'),
+            name=data['name'],
+            role=data.get('role'),
+            phone=data.get('phone')
+        )
+        db.session.add(member)
+        db.session.commit()
+        return jsonify(member.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/crew-members/<int:member_id>', methods=['PUT'])
+def update_crew_member(member_id):
+    """Update a crew member"""
+    try:
+        from app.models.maintenance import CrewMember
+        member = CrewMember.query.get_or_404(member_id)
+        data = request.json
+        if 'name' in data: member.name = data['name']
+        if 'role' in data: member.role = data['role']
+        if 'phone' in data: member.phone = data['phone']
+        if 'active' in data: member.active = data['active']
+        db.session.commit()
+        return jsonify(member.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/crew-members/<int:member_id>', methods=['DELETE'])
+def delete_crew_member(member_id):
+    """Delete a crew member"""
+    try:
+        from app.models.maintenance import CrewMember
+        member = CrewMember.query.get_or_404(member_id)
+        db.session.delete(member)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/materials', methods=['GET'])
+def get_materials():
+    """Get all materials"""
+    try:
+        from app.models.maintenance import Material
+        materials = Material.query.all()
+        return jsonify([m.to_dict() for m in materials])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/materials', methods=['POST'])
+def create_material():
+    """Create a new material"""
+    try:
+        from app.models.maintenance import Material
+        data = request.json
+        material = Material(
+            name=data['name'],
+            unit=data.get('unit'),
+            quantity=data.get('quantity', 0),
+            reorder_level=data.get('reorder_level', 0),
+            cost_per_unit=data.get('cost_per_unit', 0)
+        )
+        db.session.add(material)
+        db.session.commit()
+        return jsonify(material.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/materials/<int:material_id>', methods=['PUT'])
+def update_material(material_id):
+    """Update a material"""
+    try:
+        from app.models.maintenance import Material
+        material = Material.query.get_or_404(material_id)
+        data = request.json
+        if 'name' in data: material.name = data['name']
+        if 'unit' in data: material.unit = data['unit']
+        if 'quantity' in data: material.quantity = data['quantity']
+        if 'reorder_level' in data: material.reorder_level = data['reorder_level']
+        if 'cost_per_unit' in data: material.cost_per_unit = data['cost_per_unit']
+        db.session.commit()
+        return jsonify(material.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/materials/<int:material_id>', methods=['DELETE'])
+def delete_material(material_id):
+    """Delete a material"""
+    try:
+        from app.models.maintenance import Material
+        material = Material.query.get_or_404(material_id)
+        db.session.delete(material)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+# Repair Jobs endpoints (complete)
+@bp.route('/repair-jobs', methods=['GET'])
+def get_repair_jobs():
+    """Return repair jobs with optional status filter"""
+    try:
+        from app.models.maintenance import RepairJob
+        status = request.args.get('status')
+        query = RepairJob.query
+        if status:
+            query = query.filter_by(status=status)
+        jobs = query.order_by(RepairJob.assigned_at.desc()).all()
+        return jsonify([j.to_dict() for j in jobs])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/repair-jobs', methods=['POST'])
+def create_repair_job():
+    """Create a repair job"""
+    try:
+        from app.models.maintenance import RepairJob
+        data = request.json
+        job = RepairJob(
+            pothole_id=data['pothole_id'],
+            crew_id=data.get('crew_id'),
+            assigned_by=data.get('assigned_by'),
+            notes=data.get('notes')
+        )
+        db.session.add(job)
+        db.session.commit()
+        return jsonify(job.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/repair-jobs/<int:job_id>', methods=['PUT'])
+def update_repair_job(job_id):
+    """Update repair job (start, complete, assign crew)"""
+    try:
+        from app.models.maintenance import RepairJob
+        job = RepairJob.query.get_or_404(job_id)
+        data = request.json
+        if 'status' in data:
+            job.status = data['status']
+            if data['status'] == 'in_progress' and not job.started_at:
+                job.started_at = datetime.utcnow()
+            elif data['status'] == 'completed' and not job.completed_at:
+                job.completed_at = datetime.utcnow()
+        if 'crew_id' in data: job.crew_id = data['crew_id']
+        if 'notes' in data: job.notes = data['notes']
+        if 'quality_check_passed' in data:
+            job.quality_check_passed = data['quality_check_passed']
+        db.session.commit()
+        return jsonify(job.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/repair-jobs/<int:job_id>/photos', methods=['POST'])
+def upload_repair_job_photos(job_id):
+    """Upload after photos for repair job"""
+    try:
+        from app.models.maintenance import RepairJob
+        if 'photos' not in request.files:
+            return jsonify({'error': 'No photos provided'}), 400
+        files = request.files.getlist('photos')
+        job = RepairJob.query.get_or_404(job_id)
+        uploaded_files = []
+        for file in files:
+            filename = f'repair_{job_id}_{datetime.now().timestamp()}.jpg'
+            upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'uploads', 'repairs')
+            os.makedirs(upload_dir, exist_ok=True)
+            upload_path = os.path.join(upload_dir, filename)
+            file.save(upload_path)
+            uploaded_files.append(filename)
+        job.after_photos = uploaded_files
+        job.status = 'completed'
+        job.completed_at = datetime.utcnow()
+        db.session.commit()
+        return jsonify({'success': True, 'files': uploaded_files})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/repair-jobs/<int:job_id>/materials', methods=['GET'])
+def get_repair_job_materials(job_id):
+    """Get materials used in a repair job"""
+    try:
+        from app.models.maintenance import RepairMaterial
+        materials = RepairMaterial.query.filter_by(repair_job_id=job_id).all()
+        return jsonify([m.to_dict() for m in materials])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@bp.route('/repair-jobs/<int:job_id>/materials', methods=['POST'])
+def add_repair_job_material(job_id):
+    """Add material used in repair job"""
+    try:
+        from app.models.maintenance import RepairMaterial, Material
+        data = request.json
+        material = Material.query.get(data['material_id'])
+        if not material:
+            return jsonify({'error': 'Material not found'}), 404
+        rm = RepairMaterial(
+            repair_job_id=job_id,
+            material_id=data['material_id'],
+            quantity_used=data['quantity_used'],
+            cost_per_unit=material.cost_per_unit
+        )
+        # Deduct from inventory
+        material.quantity -= data['quantity_used']
+        db.session.add(rm)
+        db.session.commit()
+        return jsonify(rm.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
+
+# Get repaired potholes for display
+@bp.route('/potholes/repaired', methods=['GET'])
+def get_repaired_potholes():
+    """Get all repaired potholes with after photos"""
+    try:
+        from app.models.maintenance import RepairJob
+        jobs = RepairJob.query.filter_by(status='completed').all()
+        result = []
+        for job in jobs:
+            if job.after_photos:
+                result.append({
+                    'id': job.id,
+                    'pothole_id': job.pothole_id,
+                    'latitude': job.pothole.latitude if job.pothole else None,
+                    'longitude': job.pothole.longitude if job.pothole else None,
+                    'after_photos': job.after_photos,
+                    'completed_at': job.completed_at.isoformat() if job.completed_at else None,
+                    'repaired_by': job.quality_check_user.full_name if job.quality_check_user else None
+                })
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
 # =====================================================
 # EMAIL FUNCTIONS
 # =====================================================

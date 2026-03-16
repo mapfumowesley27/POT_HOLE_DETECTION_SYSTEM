@@ -1,0 +1,82 @@
+<!-- REPAIRED ROADS SECTION - Add to index.html -->
+<section id="repaired" class="mb-5">
+    <div class="glass-card">
+        <h2 class="section-title"><i class="fas fa-check-circle text-success"></i> Repaired Roads</h2>
+        <p class="text-muted mb-4">Successfully repaired potholes with after-photos and locations</p>
+        
+        <!-- Filter Buttons -->
+        <div class="mb-4 heatmap-filters">
+            <button class="btn btn-glass btn-sm me-1 heatmap-filter-btn" onclick="filterHeatmap('all')">
+                <i class="fas fa-layer-group me-1"></i>All
+            </button>
+            <button class="btn btn-glass btn-sm me-1 heatmap-filter-btn" onclick="filterHeatmap('verified')">
+                <i class="fas fa-check-circle me-1"></i>Verified
+            </button>
+            <button class="btn btn-glass btn-sm me-1 heatmap-filter-btn" onclick="filterHeatmap('repaired')">
+                <i class="fas fa-wrench me-1"></i>Repaired
+            </button>
+            <button class="btn btn-glass btn-sm heatmap-filter-btn" onclick="filterHeatmap('pending')">
+                <i class="fas fa-clock me-1"></i>Pending
+            </button>
+        </div>
+        
+        <!-- Repaired Roads Grid -->
+        <div class="row g-4" id="repairedRoadsContainer">
+            <div class="col-12 text-center py-5">
+                <div class="loading-spinner mx-auto"></div>
+                <p class="mt-2 text-muted">Loading repaired roads...</p>
+            </div>
+        </div>
+        
+        <!-- View More Button -->
+        <div class="text-center mt-4" id="repairedViewMore">
+            <button class="btn btn-glass-primary" onclick="loadMoreRepairedRoads()">
+                <i class="fas fa-arrow-down me-2"></i>View More
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- Add styles for repaired roads section -->
+<style>
+.repaired-road-card {
+    background: rgba(40, 167, 69, 0.08);
+    border: 1px solid rgba(40, 167, 69, 0.2);
+    border-radius: 1rem;
+    padding: 1rem;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.repaired-road-card:hover {
+    background: rgba(40, 167, 69, 0.12);
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(40, 167, 69, 0.15);
+}
+
+.repaired-road-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.repaired-road-image:hover {
+    transform: scale(1.02);
+}
+
+.location-label {
+    background: rgba(40, 167, 69, 0.95);
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    backdrop-filter: blur(4px);
+}
+</style>

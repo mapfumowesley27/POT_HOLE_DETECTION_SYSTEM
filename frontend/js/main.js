@@ -1,5 +1,8 @@
 
 const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'http://localhost:5000';
+// Make it globally accessible
+window.API_BASE_URL = API_BASE_URL;
+
 // Initialize maps and global variables
 let mainMap, reportMap, heatMap, heatLayer;
 let markers = [];
@@ -147,18 +150,24 @@ async function updateHeatmap(potholes) {
                 .map(p => [p.latitude, p.longitude, 1]);
         }
 
+        // Remove existing heat layer from heatMap
         if (heatLayer) {
-            mainMap.removeLayer(heatLayer);
+            heatMap.removeLayer(heatLayer);
         }
 
-        // Create heatmap with intensity based on density
+        // Invalidate map size to ensure proper rendering
+        setTimeout(() => {
+            heatMap.invalidateSize();
+        }, 100);
+
+        // Create heatmap with intensity based on density - add to heatMap
         heatLayer = L.heatLayer(heatData, {
-            radius: 25,
-            blur: 15,
+            radius: 30,
+            blur: 20,
             maxZoom: 17,
             // Red gradient for high density areas (5+ per 100m²)
-            gradient: {0.4: 'blue', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red'}
-        }).addTo(mainMap);
+            gradient: {0.2: 'blue', 0.4: 'lime', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red'}
+        }).addTo(heatMap);
         
         return densityData;
     } catch (error) {
@@ -169,15 +178,19 @@ async function updateHeatmap(potholes) {
             .map(p => [p.latitude, p.longitude, 1]);
 
         if (heatLayer) {
-            mainMap.removeLayer(heatLayer);
+            heatMap.removeLayer(heatLayer);
         }
 
+        setTimeout(() => {
+            heatMap.invalidateSize();
+        }, 100);
+
         heatLayer = L.heatLayer(heatData, {
-            radius: 25,
-            blur: 15,
+            radius: 30,
+            blur: 20,
             maxZoom: 17,
-            gradient: {0.4: 'blue', 0.6: 'lime', 0.8: 'red'}
-        }).addTo(mainMap);
+            gradient: {0.2: 'blue', 0.4: 'lime', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red'}
+        }).addTo(heatMap);
     }
 }
 

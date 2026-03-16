@@ -446,30 +446,28 @@
 
     <!-- Maintenance Tabs -->
     <div class="container mt-3">
-        <div class="glass-card p-2">
-            <ul class="nav nav-pills justify-content-center mb-0" id="maintenanceTabs" role="tablist" style="gap: 10px;">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active btn btn-lg fw-bold" id="dashboard-tab" data-bs-toggle="pill" data-bs-target="#dashboardPanel" type="button" style="background: #fd7e14; color: white; border-radius: 50px; padding: 10px 30px;">
-                        <i class="fas fa-tachometer-alt me-2"></i> Dashboard
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link btn btn-lg fw-bold" id="crews-tab" data-bs-toggle="pill" data-bs-target="#crewsPanel" type="button" style="background: #1e6df2; color: white; border-radius: 50px; padding: 10px 30px;">
-                        <i class="fas fa-users me-2"></i> Crews
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link btn btn-lg fw-bold" id="materials-tab" data-bs-toggle="pill" data-bs-target="#materialsPanel" type="button" style="background: #28a745; color: white; border-radius: 50px; padding: 10px 30px;">
-                        <i class="fas fa-boxes me-2"></i> Materials
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link btn btn-lg fw-bold" id="jobs-tab" data-bs-toggle="pill" data-bs-target="#jobsPanel" type="button" style="background: #6f42c1; color: white; border-radius: 50px; padding: 10px 30px;">
-                        <i class="fas fa-tools me-2"></i> Repair Jobs
-                    </button>
-                </li>
-            </ul>
-        </div>
+        <ul class="nav nav-pills glass-pills" id="maintenanceTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="dashboard-tab" data-bs-toggle="pill" data-bs-target="#dashboardPanel" type="button">
+                    <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="crews-tab" data-bs-toggle="pill" data-bs-target="#crewsPanel" type="button">
+                    <i class="fas fa-users me-1"></i> Crews
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="materials-tab" data-bs-toggle="pill" data-bs-target="#materialsPanel" type="button">
+                    <i class="fas fa-boxes me-1"></i> Materials
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="jobs-tab" data-bs-toggle="pill" data-bs-target="#jobsPanel" type="button">
+                    <i class="fas fa-tools me-1"></i> Repair Jobs
+                </button>
+            </li>
+        </ul>
     </div>
 
     <div class="container mt-4">
@@ -611,8 +609,8 @@
             <div class="glass-card">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h3 class="section-title mb-0"><i class="fas fa-users"></i> Maintenance Crews</h3>
-                    <button class="btn btn-primary btn-lg fw-bold shadow-sm" onclick="openCrewModal()" style="background: linear-gradient(135deg, #fd7e14, #e06b05); border: none; border-radius: 50px; padding: 0.6rem 1.5rem;">
-                        <i class="fas fa-plus-circle me-2"></i>Add New Crew
+                    <button class="btn btn-glass-primary" onclick="openCrewModal()">
+                        <i class="fas fa-plus me-2"></i>Add Crew
                     </button>
                 </div>
                 <div class="table-responsive">
@@ -640,8 +638,8 @@
             <div class="glass-card mt-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h3 class="section-title mb-0"><i class="fas fa-user-friends"></i> Crew Members</h3>
-                    <button class="btn btn-primary fw-bold shadow-sm" onclick="openCrewMemberModal()" style="background: #1e6df2; border: none; border-radius: 50px;">
-                        <i class="fas fa-user-plus me-2"></i>Add Member
+                    <button class="btn btn-glass-primary" onclick="openCrewMemberModal()">
+                        <i class="fas fa-plus me-2"></i>Add Member
                     </button>
                 </div>
                 <div class="table-responsive">
@@ -671,8 +669,8 @@
             <div class="glass-card">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h3 class="section-title mb-0"><i class="fas fa-boxes"></i> Materials Inventory</h3>
-                    <button class="btn btn-primary btn-lg fw-bold shadow-sm" onclick="openMaterialModal()" style="background: linear-gradient(135deg, #28a745, #1e7e34); border: none; border-radius: 50px; padding: 0.6rem 1.5rem;">
-                        <i class="fas fa-box-open me-2"></i>Add New Material
+                    <button class="btn btn-glass-primary" onclick="openMaterialModal()">
+                        <i class="fas fa-plus me-2"></i>Add Material
                     </button>
                 </div>
                 <div class="row g-3 mb-4">
@@ -728,8 +726,8 @@
             <div class="glass-card">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h3 class="section-title mb-0"><i class="fas fa-tools"></i> Repair Jobs</h3>
-                    <button class="btn btn-primary btn-lg fw-bold shadow-sm" onclick="openRepairJobModal()" style="background: linear-gradient(135deg, #6f42c1, #5a32d6); border: none; border-radius: 50px; padding: 0.6rem 1.5rem;">
-                        <i class="fas fa-tools me-2"></i>Create New Job
+                    <button class="btn btn-glass-primary" onclick="openRepairJobModal()">
+                        <i class="fas fa-plus me-2"></i>Create Job
                     </button>
                 </div>
                 <div class="row g-3 mb-4">

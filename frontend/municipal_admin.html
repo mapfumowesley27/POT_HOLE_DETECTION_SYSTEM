@@ -473,30 +473,34 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Users Table -->
+            <!-- Users Table - Full Details -->
             <div class="glass-table scrollable-table">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>User</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Last Active</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usersTableBody">
-                        <tr>
-                            <td colspan="6" class="text-center py-4">
-                                <div class="loading-spinner mx-auto"></div>
-                                <p class="mt-2">Loading users...</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Role</th>
+                                    <th>Zone</th>
+                                    <th>Status</th>
+                                    <th>Last Login</th>
+                                    <th>Last Active</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <tr>
+                                    <td colspan="11" class="text-center py-4">
+                                        <div class="loading-spinner mx-auto"></div>
+                                        <p class="mt-2">Loading users...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
         </div>
 
         <!-- Data Overview Section -->
@@ -541,28 +545,28 @@
             <h3 class="section-title"><i class="fas fa-file-pdf"></i> Generate Reports</h3>
             <div class="row g-4">
                 <div class="col-md-3">
-                    <div class="stat-card" onclick="generateReport('daily')" style="cursor: pointer;">
+                    <div class="stat-card" onclick="generateReport('daily', this)" style="cursor: pointer;">
                         <i class="fas fa-calendar-day fa-2x mb-2" style="color: #1e6df2;"></i>
                         <h5>Daily Report</h5>
                         <small class="text-muted">Last 24 hours</small>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="stat-card" onclick="generateReport('weekly')" style="cursor: pointer;">
+                    <div class="stat-card" onclick="generateReport('weekly', this)" style="cursor: pointer;">
                         <i class="fas fa-calendar-week fa-2x mb-2" style="color: #1e6df2;"></i>
                         <h5>Weekly Report</h5>
                         <small class="text-muted">Last 7 days</small>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="stat-card" onclick="generateReport('monthly')" style="cursor: pointer;">
+                    <div class="stat-card" onclick="generateReport('monthly', this)" style="cursor: pointer;">
                         <i class="fas fa-calendar-alt fa-2x mb-2" style="color: #1e6df2;"></i>
                         <h5>Monthly Report</h5>
                         <small class="text-muted">Last 30 days</small>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="stat-card" onclick="generateReport('custom')" style="cursor: pointer;">
+                    <div class="stat-card" onclick="generateReport('custom', this)" style="cursor: pointer;">
                         <i class="fas fa-sliders-h fa-2x mb-2" style="color: #1e6df2;"></i>
                         <h5>Custom Range</h5>
                         <small class="text-muted">Select dates</small>
@@ -922,13 +926,24 @@
                 return;
             }
 
+            // Get zone name helper
+            const getZoneName = (zoneId) => {
+                const zones = {1: 'Harare', 2: 'Bulawayo', 3: 'Mutare', 4: 'Gweru', 5: 'Masvingo'};
+                return zones[zoneId] || 'Unassigned';
+            };
+            
             tbody.innerHTML = users.map(user => `
                 <tr>
+                    <td>${user.id}</td>
                     <td><i class="fas fa-user-circle me-2" style="color: #1e6df2;"></i> ${user.full_name || user.username}</td>
                     <td>${user.email}</td>
+                    <td>${user.phone || '-'}</td>
                     <td><span class="role-badge"><i class="fas ${user.role === 'admin' ? 'fa-user-shield' : user.role === 'manager' ? 'fa-hard-hat' : 'fa-user'} me-1"></i>${capitalizeFirst(user.role)}</span></td>
+                    <td>${getZoneName(user.zone_id)}</td>
                     <td><span class="${user.status === 'active' ? 'status-badge-active' : 'status-badge-inactive'}"><i class="fas fa-circle me-1"></i>${capitalizeFirst(user.status)}</span></td>
+                    <td>${user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never'}</td>
                     <td>${formatLastActive(user.last_active)}</td>
+                    <td>${user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}</td>
                     <td>
                         <button class="btn btn-sm btn-glass-success me-1" onclick="editUser(${user.id})"><i class="fas fa-edit"></i></button>
                         <button class="btn btn-sm btn-glass-danger" onclick="deleteUser(${user.id})"><i class="fas fa-trash"></i></button>
@@ -973,6 +988,39 @@
             option.textContent = zone.name;
             select.appendChild(option);
         });
+    }            // Get location name from coordinates (reverse geocoding mock)
+    function getLocationName(lat, lng) {
+        // Simple reverse geocoding - in production, use a real geocoding service
+        const locations = [
+            {lat: -17.8252, lng: 31.0335, name: 'Harare CBD'},
+            {lat: -17.8300, lng: 31.0400, name: 'Chinhoyi Street, Harare'},
+            {lat: -20.1651, lng: 28.5832, name: 'Bulawayo CBD'},
+            {lat: -19.0584, lng: 29.7850, name: 'Gweru'},
+            {lat: -18.0184, lng: 31.0835, name: 'Mbare, Harare'},
+            {lat: -17.9866, lng: 31.3072, name: 'Mount Pleasant, Harare'},
+            {lat: -17.7715, lng: 31.0456, name: 'Avondale, Harare'},
+            {lat: -17.8500, lng: 31.0200, name: 'Sam Nujoma Street'},
+            {lat: -17.8132, lng: 31.0497, name: 'Eastlea, Harare'},
+            {lat: -19.4438, lng: 29.7820, name: 'Kwekwe'},
+            {lat: -18.1409, lng: 32.4172, name: 'Mutare'}
+        ];
+        
+        // Find closest location
+        let closest = null;
+        let minDist = Infinity;
+        
+        for (const loc of locations) {
+            const dist = Math.sqrt(Math.pow(lat - loc.lat, 2) + Math.pow(lng - loc.lng, 2));
+            if (dist < minDist && dist < 0.1) {
+                minDist = dist;
+                closest = loc;
+            }
+        }
+        
+        if (closest) {
+            return closest.name;
+        }
+        return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
     }
 
     async function loadRecentReports() {
@@ -982,7 +1030,7 @@
             const potholes = await response.json();
             
             if (!potholes || potholes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3">No reports found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3">No reports found.</td></tr>';
                 return;
             }
             
@@ -991,15 +1039,16 @@
             tbody.innerHTML = recent.map(p => `
                 <tr>
                     <td>#${p.id}</td>
-                    <td>${p.latitude.toFixed(4)}, ${p.longitude.toFixed(4)}</td>
-                    <td><span class="badge ${p.size_classification === 'large' ? 'bg-danger' : p.size_classification === 'medium' ? 'bg-warning' : 'bg-success'}">${capitalizeFirst(p.size_classification)}</span></td>
+                    <td>${getLocationName(p.latitude, p.longitude)}</td>
+                    <td><span class="badge ${p.size_classification === 'large' ? 'bg-danger' : p.size_classification === 'medium' ? 'bg-warning' : 'bg-success'}">${capitalizeFirst(p.size_classification || 'Unknown')}</span></td>
                     <td><span class="badge ${p.status === 'repaired' ? 'bg-success' : p.status === 'verified' ? 'bg-info' : 'bg-warning'}">${capitalizeFirst(p.status)}</span></td>
                     <td>${p.reported_by || 'Anonymous'}</td>
+                    <td>${p.reported_at ? new Date(p.reported_at).toLocaleDateString() : '-'}</td>
                 </tr>
             `).join('');
         } catch (error) {
             console.error('Error loading recent reports:', error);
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-danger">Error loading reports</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3 text-danger">Error loading reports</td></tr>';
         }
     }
 
@@ -1066,17 +1115,18 @@
 
     function filterUsers() {
         const searchTerm = document.getElementById('userSearch').value.toLowerCase();
-        const roleFilter = document.getElementById('roleFilter').value;
-        const statusFilter = document.getElementById('statusFilter').value;
+        const roleFilter = document.getElementById('roleFilter').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
 
         const rows = document.querySelectorAll('#usersTableBody tr');
         rows.forEach(row => {
-            if (row.cells && row.cells.length > 1) {
-                const name = row.cells[0].textContent.toLowerCase();
-                const role = row.cells[2].textContent.toLowerCase();
-                const status = row.cells[3].textContent.toLowerCase();
+            if (row.cells && row.cells.length > 6) {
+                const name = row.cells[1].textContent.toLowerCase();
+                const email = row.cells[2].textContent.toLowerCase();
+                const role = row.cells[4].textContent.toLowerCase();
+                const status = row.cells[6].textContent.toLowerCase();
 
-                const matchesSearch = name.includes(searchTerm);
+                const matchesSearch = name.includes(searchTerm) || email.includes(searchTerm);
                 const matchesRole = roleFilter === 'all' || role.includes(roleFilter);
                 const matchesStatus = statusFilter === 'all' || status.includes(statusFilter);
 
@@ -1177,7 +1227,7 @@
         document.getElementById('addUserForm').reset();
     }
 
-    async function generateReport(type) {
+    async function generateReport(type, element) {
         let startDate, endDate;
         const now = new Date();
         
@@ -1197,7 +1247,7 @@
             return;
         }
         
-        await fetchAndGenerateReport(type, startDate, endDate);
+        await fetchAndGenerateReport(type, startDate, endDate, element);
     }
 
     // Generate custom range report
@@ -1223,10 +1273,10 @@
     }
 
     // Fetch data and generate report
-    async function fetchAndGenerateReport(type, startDate, endDate) {
+    async function fetchAndGenerateReport(type, startDate, endDate, element) {
         try {
-            // Show loading
-            const reportCard = event.target.closest('.stat-card') || event.target;
+            // Show loading - use element parameter or find from event
+            const reportCard = element ? element.closest('.stat-card') : event.target.closest('.stat-card');
             const originalContent = reportCard.innerHTML;
             reportCard.innerHTML = '<div class="loading-spinner mx-auto"></div><p class="mt-2">Generating report...</p>';
             
