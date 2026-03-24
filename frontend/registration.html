@@ -533,9 +533,8 @@
         </div>
     </footer>
 
+    <script src="js/config.js"></script>
     <script>
-        const API_BASE_URL = 'http://localhost:5000';
-
         // All Zimbabwe Councils and Municipalities
         const ZIMBABWE_ZONES = [
             // Cities
@@ -592,14 +591,41 @@
 
         // Load zones on page load
         document.addEventListener('DOMContentLoaded', function() {
-            loadZones();
+            loadZonesFromAPI();
             setupPasswordStrength();
             setupUsernameValidation();
         });
 
+        // Try to load zones from backend API
+        async function loadZonesFromAPI() {
+            const select = document.getElementById('zone');
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/zones`);
+                if (response.ok) {
+                    const zones = await response.json();
+                    if (zones && zones.length > 0) {
+                        select.innerHTML = '<option value="" disabled selected>Select your area...</option>';
+                        zones.sort((a, b) => a.name.localeCompare(b.name)).forEach(zone => {
+                            const option = document.createElement('option');
+                            option.value = zone.id;
+                            option.textContent = zone.name;
+                            select.appendChild(option);
+                        });
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading zones from API:', error);
+            }
+            
+            // Fallback to local data if API fails or returns empty
+            loadZones();
+        }
+
         // Load zones from local data
         function loadZones() {
             const select = document.getElementById('zone');
+            select.innerHTML = '<option value="" disabled selected>Select your area...</option>';
             ZIMBABWE_ZONES.sort((a, b) => a.name.localeCompare(b.name)).forEach(zone => {
                 const option = document.createElement('option');
                 option.value = zone.id;

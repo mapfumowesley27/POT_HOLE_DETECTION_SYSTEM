@@ -11,7 +11,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import request, jsonify, current_app
-from sqlalchemy import func
+from sqlalchemy import func, extract
 import math
 
 import os
@@ -87,6 +87,14 @@ def report_pothole():
             status='pending'
         )
 
+        # Automatic Zone Assignment (Zimbabwe Municipalities)
+        from app.models.pothole import Zone
+        zones = Zone.query.all()
+        for zone in zones:
+            if zone.contains_point(pothole.latitude, pothole.longitude):
+                pothole.zone_id = zone.id
+                break
+
         db.session.add(pothole)
         db.session.commit()
 
@@ -131,13 +139,22 @@ def report_pothole():
 
 @bp.route('/potholes', methods=['GET'])
 def get_potholes():
-    """Get all potholes with optional filters"""
+    """Get all potholes with optional filters and zone-based isolation"""
     try:
         status = request.args.get('status')
+        zone_id = request.args.get('zone_id')
+        role = request.args.get('role') # Role from client (in real app, use JWT)
 
         query = Pothole.query
         if status:
             query = query.filter_by(status=status)
+        
+        # Isolation Logic: Maintenance Managers see only their zone
+        # Public (no role) sees all (global dashboard)
+        if role == 'manager' and zone_id:
+            query = query.filter_by(zone_id=int(zone_id))
+        elif zone_id: # Optional filter for other roles
+            query = query.filter_by(zone_id=int(zone_id))
 
         potholes = query.all()
         return jsonify([p.to_dict() for p in potholes])
@@ -285,12 +302,19 @@ def get_original_image(pothole_id):
 
 @bp.route('/stats', methods=['GET'])
 def get_stats():
-    """Get dashboard statistics"""
+    """Get dashboard statistics with zone-based isolation"""
     try:
-        total = Pothole.query.count()
-        pending = Pothole.query.filter_by(status='pending').count()
-        verified = Pothole.query.filter_by(status='verified').count()
-        repaired = Pothole.query.filter_by(status='repaired').count()
+        zone_id = request.args.get('zone_id')
+        role = request.args.get('role')
+
+        query = Pothole.query
+        if role == 'manager' and zone_id:
+            query = query.filter_by(zone_id=int(zone_id))
+
+        total = query.count()
+        pending = query.filter_by(status='pending').count()
+        verified = query.filter_by(status='verified').count()
+        repaired = query.filter_by(status='repaired').count()
 
         return jsonify({
             'total': total,
@@ -445,23 +469,20 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 
 @bp.route('/admin/users', methods=['GET'])
 def get_users():
-    """Return all users (admin only)"""
+    """Return users with zone-based isolation for admins"""
     try:
-        # Check if users table exists (you need to create this)
-        from app.models.user import User  # Create this model
+        from app.models.user import User
+        
+        # Isolation Logic: Municipal Admins only see users in their zone
+        admin_zone_id = request.args.get('admin_zone_id')
+        role = request.args.get('role')
 
-        users = User.query.all()
-        return jsonify([{
-            'id': u.id,
-            'username': u.username,
-            'email': u.email,
-            'full_name': u.full_name,
-            'role': u.role,
-            'status': u.status,
-            'last_active': u.last_active.isoformat() if u.last_active else None,
-            'phone': u.phone_number,
-            'zone_id': u.zone_id
-        } for u in users])
+        query = User.query
+        if role == 'admin' and admin_zone_id:
+            query = query.filter_by(zone_id=int(admin_zone_id))
+
+        users = query.all()
+        return jsonify([u.to_dict() for u in users])
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
@@ -511,6 +532,17 @@ def create_user():
         return jsonify({'error': str(e)}), 400
 
 
+@bp.route('/admin/users/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    """Fetch single user's data for editing"""
+    try:
+        from app.models.user import User
+        user = User.query.get_or_404(user_id)
+        return jsonify(user.to_dict())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
 @bp.route('/admin/users/<int:user_id>', methods=['PUT'])
 def update_user(user_id):
     """Update user details"""
@@ -557,14 +589,21 @@ def delete_user(user_id):
 
 @bp.route('/admin/users/stats', methods=['GET'])
 def get_user_stats():
-    """Return user statistics"""
+    """Return user statistics with zone-based isolation"""
     try:
         from app.models.user import User
+        
+        admin_zone_id = request.args.get('admin_zone_id')
+        role = request.args.get('role')
 
-        total_users = User.query.count()
-        active_managers = User.query.filter_by(role='manager', status='active').count()
-        active_admins = User.query.filter_by(role='admin', status='active').count()
-        pending_approvals = User.query.filter_by(status='pending').count()
+        query = User.query
+        if role == 'admin' and admin_zone_id:
+            query = query.filter_by(zone_id=int(admin_zone_id))
+
+        total_users = query.count()
+        active_managers = query.filter_by(role='manager', status='active').count()
+        active_admins = query.filter_by(role='admin', status='active').count()
+        pending_approvals = query.filter_by(status='pending').count()
 
         return jsonify({
             'totalUsers': total_users,
@@ -581,8 +620,7 @@ def get_user_stats():
 def get_zones():
     """Return all zones"""
     try:
-        from app.models.zone import Zone  # Create this model
-
+        from app.models.pothole import Zone
         zones = Zone.query.all()
         return jsonify([{
             'id': z.id,
@@ -678,7 +716,7 @@ def reject_pothole(pothole_id):
 def upload_repair_photos():
     """Upload repair photos"""
     try:
-        from app.models.repair import RepairJob
+        from app.models.maintenance import RepairJob
 
         if 'photos' not in request.files:
             return jsonify({'error': 'No photos provided'}), 400

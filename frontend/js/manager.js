@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function initializeManager() {
+    await loadZones();
     await loadAlerts();
     await loadPotholeStats();
     await loadPotholesToVerify();
@@ -39,11 +40,201 @@ async function initializeManager() {
     await loadMaterials();
     await loadRepairJobs();
     initializeMap();
+    setupCameraEventListeners();
+}
+
+function setupCameraEventListeners() {
+    const startCaptureBtn = document.getElementById('startCapture');
+    if (startCaptureBtn) {
+        // Check for secure context
+        if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+            console.warn("Camera access requires a secure context (HTTPS or localhost).");
+            startCaptureBtn.classList.add('btn-disabled-secure');
+            startCaptureBtn.title = "Camera access requires HTTPS";
+        }
+        
+        startCaptureBtn.addEventListener('click', function() {
+            console.log("Start capture button clicked");
+            if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+                alert("Camera access is blocked because this page is not served over HTTPS. Please use HTTPS or localhost to enable camera features.");
+                return;
+            }
+            startCameraFeed();
+        });
+    }
+
+    const captureBtn = document.getElementById('captureBtn');
+    if (captureBtn) {
+        captureBtn.addEventListener('click', function() {
+            console.log("Capture button clicked");
+            captureLivePhoto();
+        });
+    }
+
+    const stopCameraBtn = document.getElementById('stopCamera');
+    if (stopCameraBtn) {
+        stopCameraBtn.addEventListener('click', function() {
+            console.log("Stop camera button clicked");
+            stopCameraFeed();
+        });
+    }
+}
+
+let videoStream = null;
+
+async function startCameraFeed() {
+    const video = document.getElementById('video');
+    const container = document.getElementById('cameraContainer');
+
+    if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+        alert("SECURITY ERROR: Camera access (getUserMedia) is only allowed in Secure Contexts (HTTPS or localhost). \n\nYour current environment: " + window.location.protocol + "//" + window.location.hostname);
+        return;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Your browser does not support camera access. Please use a modern browser (Chrome, Firefox, Safari) and ensure you're using HTTPS.");
+        return;
+    }
+
+    container.style.display = 'block';
+    const startBtn = document.getElementById('startCapture');
+    if (startBtn) startBtn.disabled = true;
+
+    try {
+        console.log("Requesting camera access with constraints:", { video: { facingMode: "environment" } });
+        const constraints = { 
+            video: { facingMode: "environment" },
+            audio: false 
+        };
+        videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        console.log("Camera access granted. Stream ID:", videoStream.id);
+        const videoTracks = videoStream.getVideoTracks();
+        if (videoTracks.length > 0) {
+            console.log("Video track label:", videoTracks[0].label);
+            console.log("Video track settings:", videoTracks[0].getSettings());
+        }
+
+        console.log("Setting video.srcObject...");
+        video.srcObject = videoStream;
+        
+        video.onloadedmetadata = () => {
+            console.log("Video metadata loaded. Dimensions:", video.videoWidth, "x", video.videoHeight);
+            video.play()
+                .then(() => {
+                    console.log("Camera started successfully and playing (onloadedmetadata)");
+                })
+                .catch(e => {
+                    console.error("Video play failed (onloadedmetadata):", e);
+                });
+        };
+        
+        video.play().then(() => {
+            console.log("Camera playing immediately after setting srcObject");
+        }).catch(e => {
+            console.warn("Immediate play failed (expected if metadata not yet loaded):", e.message);
+        });
+
+    } catch (err) {
+        console.error("Camera error:", err);
+        container.style.display = 'none';
+        if (startBtn) startBtn.disabled = false;
+        
+        let errorMsg = "Could not access camera: ";
+        if (err.name === 'NotAllowedError') {
+            errorMsg += "Permission denied. Please allow camera access.";
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+            errorMsg += "No camera found on this device.";
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+            errorMsg += "Camera is already in use by another application.";
+        } else {
+            errorMsg += err.name + ": " + err.message;
+        }
+        alert(errorMsg);
+    }
+}
+
+function stopCameraFeed() {
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+    }
+    const container = document.getElementById('cameraContainer');
+    if (container) container.style.display = 'none';
+    const startBtn = document.getElementById('startCapture');
+    if (startBtn) startBtn.disabled = false;
+}
+
+function captureLivePhoto() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const preview = document.getElementById('imagePreview');
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    
+    if (!video || !canvas || !preview || !previewContainer) {
+        console.error("Missing camera or preview elements");
+        return;
+    }
+
+    const context = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const dataUrl = canvas.toDataURL('image/jpeg');
+    preview.src = dataUrl;
+    previewContainer.style.display = 'block';
+    
+    // Store for submission
+    window.capturedImageData = dataUrl;
+    
+    // Stop the camera feed
+    stopCameraFeed();
+    
+    showNotification("Photo captured! Please confirm if you want to use it.", 'info');
+}
+
+function confirmRepairCapture() {
+    if (window.capturedImageData) {
+        showNotification("Photo confirmed and pothole marked as repaired!", 'success');
+        document.getElementById('imagePreviewContainer').style.display = 'none';
+        // Here you would normally send the data to the server
+    }
+}
+
+function retakePhoto() {
+    document.getElementById('imagePreviewContainer').style.display = 'none';
+    startCameraFeed();
 }
 
 // =============================================
 // ALERTS FUNCTIONS
 // =============================================
+async function loadZones() {
+    const select = document.getElementById('crewZone');
+    if (!select) return;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/zones`);
+        const zones = await response.json();
+        
+        // Sort zones by name
+        zones.sort((a, b) => a.name.localeCompare(b.name));
+        
+        // Clear current options (except the first one)
+        select.innerHTML = '<option value="">Select Zone</option>';
+        
+        zones.forEach(zone => {
+            const option = document.createElement('option');
+            option.value = zone.id;
+            option.textContent = zone.name;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading zones:', error);
+    }
+}
+
 async function loadAlerts() {
     const container = document.getElementById('alertsContainer');
     const alertCount = document.getElementById('alertCount');
@@ -122,7 +313,9 @@ function markForRepair(potholeId) {
 // =============================================
 async function loadPotholeStats() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/stats`);
+        const userRole = localStorage.getItem('userRole');
+        const zoneId = localStorage.getItem('zoneId');
+        const response = await fetch(`${API_BASE_URL}/api/stats?role=${userRole}&zone_id=${zoneId}`);
         const data = await response.json();
 
         document.getElementById('pendingCount').textContent = data.pending || 0;
@@ -142,7 +335,9 @@ async function loadPotholesToVerify() {
     if (!container) return;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/potholes?status=pending`);
+        const userRole = localStorage.getItem('userRole');
+        const zoneId = localStorage.getItem('zoneId');
+        const response = await fetch(`${API_BASE_URL}/api/potholes?status=pending&role=${userRole}&zone_id=${zoneId}`);
         const potholes = await response.json();
 
         if (!potholes || potholes.length === 0) {

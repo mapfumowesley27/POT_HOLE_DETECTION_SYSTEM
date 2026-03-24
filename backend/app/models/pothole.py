@@ -40,8 +40,44 @@ class Zone(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
-    boundary = db.Column(db.String(500))  # GeoJSON polygon
+    boundary = db.Column(db.Text)  # Store GeoJSON polygon as text
     potholes = db.relationship('Pothole', backref='zone', lazy=True)
+
+    def contains_point(self, lat, lon):
+        """Check if a coordinate point is within this zone using basic point-in-polygon"""
+        import json
+        try:
+            geojson = json.loads(self.boundary)
+            if geojson.get('type') != 'Polygon':
+                return False
+            
+            coords = geojson['coordinates'][0] # Outer ring
+            
+            # Point-in-Polygon (Ray Casting) Algorithm
+            inside = False
+            n = len(coords)
+            p1x, p1y = coords[0]
+            for i in range(n + 1):
+                p2x, p2y = coords[i % n]
+                if lon > min(p1x, p2x):
+                    if lon <= max(p1x, p2x):
+                        if lat <= max(p1y, p2y):
+                            if p1x != p2x:
+                                xints = (lon - p1x) * (p2y - p1y) / (p2x - p1x) + p1y
+                            if p1y == p2y or lat <= xints:
+                                inside = not inside
+                p1x, p1y = p2x, p2y
+            return inside
+        except Exception as e:
+            print(f"Error checking zone boundary: {e}")
+            return False
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'boundary': self.boundary
+        }
 
     def calculate_density(self):
         """Calculate pothole density per 100m² (Objective 2)"""

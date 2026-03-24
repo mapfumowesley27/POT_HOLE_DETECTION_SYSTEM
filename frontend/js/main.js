@@ -16,59 +16,294 @@ document.addEventListener('DOMContentLoaded', function() {
     setupRealTimeUpdates();
 });
 
+function showNotification(message, type) {
+    // Simple notification
+    alert(message);
+}
+
 function initMaps() {
-    // Initialize main map (Zimbabwe centered)
-    mainMap = L.map('mainMap').setView([-17.8252, 31.0335], 12); // Harare coordinates
+    console.log("Initializing maps...");
+    try {
+        // Initialize main map (Zimbabwe centered)
+        const mainMapEl = document.getElementById('mainMap');
+        if (mainMapEl) {
+            mainMap = L.map('mainMap').setView([-17.8252, 31.0335], 12); // Harare coordinates
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(mainMap);
+        }
 
-    // Add tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(mainMap);
+        // Initialize report map
+        const reportMapEl = document.getElementById('reportMap');
+        if (reportMapEl) {
+            reportMap = L.map('reportMap').setView([-17.8252, 31.0335], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(reportMap);
 
-    // Initialize report map
-    reportMap = L.map('reportMap').setView([-17.8252, 31.0335], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(reportMap);
+            reportMap.on('click', function(e) {
+                document.getElementById('location').value =
+                    `${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`;
+                window.selectedLocation = e.latlng;
+            });
+        }
 
-    // Add click handler to report map
-    reportMap.on('click', function(e) {
-        document.getElementById('location').value =
-            `${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`;
-        window.selectedLocation = e.latlng;
-    });
-
-    // Initialize heatmap map (separate from main map for dashboard heatmap)
-    heatMap = L.map('heatmapContainer').setView([-17.8252, 31.0335], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(heatMap);
+        // Initialize heatmap map
+        const heatMapEl = document.getElementById('heatmapContainer');
+        if (heatMapEl) {
+            heatMap = L.map('heatmapContainer').setView([-17.8252, 31.0335], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(heatMap);
+        }
+    } catch (e) {
+        console.error("Error initializing maps:", e);
+    }
 }
 
 function setupEventListeners() {
+    console.log("Setting up event listeners...");
     // Report form submission
-    document.getElementById('reportForm').addEventListener('submit', handleReportSubmit);
+    const reportForm = document.getElementById('reportForm');
+    if (reportForm) {
+        reportForm.addEventListener('submit', handleReportSubmit);
+    }
 
     // Get current location button
-    document.getElementById('getCurrentLocation').addEventListener('click', getCurrentLocation);
-}
+    const getCurrentLocBtn = document.getElementById('getCurrentLocation');
+    if (getCurrentLocBtn) {
+        getCurrentLocBtn.addEventListener('click', getCurrentLocation);
+    }
 
-function getCurrentLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-
-            document.getElementById('location').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-            window.selectedLocation = {lat, lng};
-
-            // Center report map on location
-            reportMap.setView([lat, lng], 15);
-
-            // Add marker
-            L.marker([lat, lng]).addTo(reportMap);
+    // Camera capture listeners
+    const startCaptureBtn = document.getElementById('startCapture');
+    if (startCaptureBtn) {
+        console.log("Start capture button found, adding listener");
+        // Check for secure context
+        if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+            console.warn("Camera access requires a secure context (HTTPS or localhost).");
+            startCaptureBtn.classList.add('btn-disabled-secure');
+            startCaptureBtn.title = "Camera access requires HTTPS";
+        }
+        
+        startCaptureBtn.addEventListener('click', function() {
+            console.log("Start capture button clicked");
+            if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+                alert("Camera access is blocked because this page is not served over HTTPS. Please use HTTPS or localhost to enable camera features.");
+                return;
+            }
+            startCameraFeed();
         });
     } else {
-        alert('Geolocation is not supported by this browser.');
+        console.error("Start capture button NOT found");
     }
+
+    const captureBtn = document.getElementById('captureBtn');
+    if (captureBtn) {
+        captureBtn.addEventListener('click', function() {
+            console.log("Capture button clicked");
+            captureLivePhoto();
+        });
+    }
+
+    const stopCameraBtn = document.getElementById('stopCamera');
+    if (stopCameraBtn) {
+        stopCameraBtn.addEventListener('click', function() {
+            console.log("Stop camera button clicked");
+            stopCameraFeed();
+        });
+    }
+}
+
+let videoStream = null;
+
+async function startCameraFeed() {
+    const video = document.getElementById('video');
+    const container = document.getElementById('cameraContainer');
+
+    if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+        alert("SECURITY ERROR: Camera access (getUserMedia) is only allowed in Secure Contexts (HTTPS or localhost). \n\nYour current environment: " + window.location.protocol + "//" + window.location.hostname);
+        return;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Your browser does not support camera access. Please use a modern browser (Chrome, Firefox, Safari) and ensure you're using HTTPS.");
+        return;
+    }
+
+    // Show container first so video is visible when stream starts
+    container.style.display = 'block';
+    document.getElementById('startCapture').disabled = true;
+
+    try {
+        console.log("Requesting camera access with constraints:", { video: { facingMode: "environment" } });
+        const constraints = { 
+            video: { facingMode: "environment" }, // Prefer back camera
+            audio: false 
+        };
+        videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        console.log("Camera access granted. Stream ID:", videoStream.id);
+        const videoTracks = videoStream.getVideoTracks();
+        if (videoTracks.length > 0) {
+            console.log("Video track label:", videoTracks[0].label);
+            console.log("Video track settings:", videoTracks[0].getSettings());
+        }
+
+        console.log("Setting video.srcObject...");
+        video.srcObject = videoStream;
+        
+        // Wait for metadata to be loaded then play
+        video.onloadedmetadata = () => {
+            console.log("Video metadata loaded. Dimensions:", video.videoWidth, "x", video.videoHeight);
+            video.play()
+                .then(() => {
+                    console.log("Camera started successfully and playing (onloadedmetadata)");
+                })
+                .catch(e => {
+                    console.error("Video play failed (onloadedmetadata):", e);
+                });
+        };
+        
+        // Also try playing immediately in case metadata is already loaded
+        video.play().then(() => {
+            console.log("Camera playing immediately after setting srcObject");
+        }).catch(e => {
+            console.warn("Immediate play failed (expected if metadata not yet loaded):", e.message);
+        });
+
+    } catch (err) {
+        console.error("Camera error:", err);
+        container.style.display = 'none';
+        document.getElementById('startCapture').disabled = false;
+        
+        let errorMsg = "Could not access camera: ";
+        if (err.name === 'NotAllowedError') {
+            errorMsg += "Permission denied. Please allow camera access.";
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+            errorMsg += "No camera found on this device.";
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+            errorMsg += "Camera is already in use by another application.";
+        } else {
+            errorMsg += err.name + ": " + err.message;
+        }
+        alert(errorMsg);
+    }
+}
+
+function stopCameraFeed() {
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+    }
+    document.getElementById('cameraContainer').style.display = 'none';
+    document.getElementById('startCapture').disabled = false;
+}
+
+function retakePhoto() {
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    if (previewContainer) previewContainer.style.display = 'none';
+    startCameraFeed();
+}
+
+function captureLivePhoto() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const preview = document.getElementById('imagePreview');
+    const previewContainer = document.getElementById('imagePreviewContainer');
+
+    if (!video || !canvas || !preview || !previewContainer) {
+        console.error("Missing camera elements");
+        return;
+    }
+
+    // Draw frame to canvas
+    const context = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Convert to image data
+    const dataUrl = canvas.toDataURL('image/jpeg');
+    preview.src = dataUrl;
+    previewContainer.style.display = 'block';
+    
+    // Update preview buttons if they don't exist
+    let actionBtns = previewContainer.querySelector('.preview-actions');
+    if (!actionBtns) {
+        actionBtns = document.createElement('div');
+        actionBtns.className = 'preview-actions mt-2';
+        actionBtns.innerHTML = `
+            <button type="button" class="btn btn-glass-danger btn-sm" onclick="retakePhoto()">
+                <i class="fas fa-redo me-1"></i> Retake
+            </button>
+        `;
+        previewContainer.appendChild(actionBtns);
+    }
+    
+    // Store dataUrl for submission
+    window.capturedImageData = dataUrl;
+    
+    // Clear file input if used
+    const fileInput = document.getElementById('image');
+    if (fileInput) fileInput.value = '';
+
+    // Take coordinates as well upon capture (requirement)
+    getCurrentLocation();
+
+    // Stop the camera
+    stopCameraFeed();
+    
+    showNotification("Photo captured and location updated!", 'success');
+}
+
+async function getCurrentLocation() {
+    console.log("Get current location triggered");
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser");
+        return;
+    }
+
+    const btn = document.getElementById('getCurrentLocation');
+    const originalContent = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Locating...';
+        btn.disabled = true;
+    }
+
+    return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                console.log("Position acquired:", position.coords.latitude, position.coords.longitude);
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                window.selectedLocation = { lat, lng };
+                
+                const locInput = document.getElementById('location');
+                if (locInput) locInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                
+                if (reportMap) {
+                    reportMap.setView([lat, lng], 15);
+                    L.marker([lat, lng]).addTo(reportMap);
+                }
+                
+                if (btn) {
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                }
+                resolve(position);
+            },
+            (error) => {
+                console.error("Geolocation error:", error);
+                // Don't alert if it's an automatic call from capture
+                if (btn) {
+                    alert("Error getting location: " + error.message);
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                }
+                resolve(null); // Resolve with null so caller can continue
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+    });
 }
 
 async function loadPotholeData() {
@@ -271,6 +506,24 @@ function imageToBase64(file) {
 }
 
 // Update the handleReportSubmit function
+function previewImage(event) {
+    console.log("Image preview triggered");
+    const input = event.target;
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById('imagePreview');
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            if (preview && previewContainer) {
+                preview.src = e.target.result;
+                previewContainer.style.display = 'block';
+                console.log("Image preview displayed");
+            }
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
 async function handleReportSubmit(e) {
     e.preventDefault();
 
@@ -294,7 +547,9 @@ async function handleReportSubmit(e) {
 
         // Handle image upload
         const imageFile = document.getElementById('image').files[0];
-        if (imageFile) {
+        if (window.capturedImageData) {
+            formData.image_base64 = window.capturedImageData;
+        } else if (imageFile) {
             // Convert image to base64
             const base64Image = await imageToBase64(imageFile);
             formData.image_base64 = base64Image;
@@ -330,6 +585,7 @@ async function handleReportSubmit(e) {
             document.getElementById('reportForm').reset();
             document.getElementById('location').value = '';
             window.selectedLocation = null;
+            window.capturedImageData = null;
 
             // Clear image preview
             const previewContainer = document.getElementById('imagePreviewContainer');
@@ -353,11 +609,64 @@ async function handleReportSubmit(e) {
     }
 }
 
+async function getCurrentLocation() {
+    console.log("Get current location triggered");
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser");
+        return;
+    }
+
+    const btn = document.getElementById('getCurrentLocation');
+    const originalContent = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Locating...';
+        btn.disabled = true;
+    }
+
+    return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                console.log("Position acquired:", position.coords.latitude, position.coords.longitude);
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                window.selectedLocation = { lat, lng };
+                
+                const locInput = document.getElementById('location');
+                if (locInput) locInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                
+                if (reportMap) {
+                    reportMap.setView([lat, lng], 15);
+                    L.marker([lat, lng]).addTo(reportMap);
+                }
+                
+                if (btn) {
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                }
+                resolve(position);
+            },
+            (error) => {
+                console.error("Geolocation error:", error);
+                if (btn) {
+                    alert("Error getting location: " + error.message);
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                }
+                resolve(null);
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+    });
+}
+
 // Image preview function
 function previewImage(event) {
     const previewContainer = document.getElementById('imagePreviewContainer');
     const preview = document.getElementById('imagePreview');
     const analysis = document.getElementById('imageAnalysis');
+
+    // Clear any previous captured live image when a file is selected
+    window.capturedImageData = null;
 
     if (event.target.files && event.target.files[0]) {
         const reader = new FileReader();

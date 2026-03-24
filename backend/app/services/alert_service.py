@@ -43,13 +43,14 @@ class AlertService:
         alert = Alert(
             type='large_pothole',
             pothole_id=pothole.id,
+            zone_id=pothole.zone_id,
             message=message
         )
         db.session.add(alert)
         db.session.commit()
 
         # Send notifications
-        self._send_notifications(message, alert.id)
+        self._send_notifications(message, alert.id, zone_id=pothole.zone_id)
 
         return alert
 
@@ -65,33 +66,43 @@ class AlertService:
         db.session.add(alert)
         db.session.commit()
 
-        self._send_notifications(message, alert.id)
+        self._send_notifications(message, alert.id, zone_id=zone.id)
 
         return alert
 
-    def _send_notifications(self, message, alert_id):
-        """Send via SMS and email"""
-        # SMS via Twilio
-        if self.twilio_enabled:
-            try:
-                self.twilio_client.messages.create(
-                    body=message,
-                    from_=os.getenv('TWILIO_PHONE'),
-                    to=os.getenv('ALERT_PHONE')  # Municipal authority phone
-                )
-            except Exception as e:
-                print(f"Twilio error: {e}")
+    def _send_notifications(self, message, alert_id, zone_id=None):
+        """Send via SMS and email to respective zone authorities"""
+        from app.models.user import User
+        
+        # Find users in this zone who are managers or admins
+        query = User.query.filter(User.role.in_(['manager', 'admin']))
+        if zone_id:
+            query = query.filter_by(zone_id=zone_id)
+        
+        recipients = query.all()
 
-        # Email via SendGrid
-        if self.email_enabled:
-            try:
-                from sendgrid.helpers.mail import Mail
-                mail = Mail(
-                    from_email='alerts@potholedetection.com',
-                    to_emails=os.getenv('ALERT_EMAIL'),
-                    subject='Pothole Alert',
-                    html_content=f'<p>{message}</p><p>Alert ID: {alert_id}</p>'
-                )
-                self.sendgrid_client.send(mail)
-            except Exception as e:
-                print(f"SendGrid error: {e}")
+        for recipient in recipients:
+            # SMS via Twilio
+            if self.twilio_enabled and recipient.phone_number:
+                try:
+                    self.twilio_client.messages.create(
+                        body=message,
+                        from_=os.getenv('TWILIO_PHONE'),
+                        to=recipient.phone_number
+                    )
+                except Exception as e:
+                    print(f"Twilio error for {recipient.username}: {e}")
+
+            # Email via SendGrid
+            if self.email_enabled and recipient.email:
+                try:
+                    from sendgrid.helpers.mail import Mail
+                    mail = Mail(
+                        from_email='alerts@potholedetection.com',
+                        to_emails=recipient.email,
+                        subject='Pothole Alert',
+                        html_content=f'<p>{message}</p><p>Alert ID: {alert_id}</p>'
+                    )
+                    self.sendgrid_client.send(mail)
+                except Exception as e:
+                    print(f"SendGrid error for {recipient.username}: {e}")

@@ -13,6 +13,11 @@ import base64
 class PotholeDetector:
     def __init__(self, model_path=None):
         self.model = None
+        # Default path if not provided
+        if model_path is None:
+            # Try to get from environment or use default relative path
+            model_path = os.environ.get('MODEL_PATH', os.path.join(os.path.dirname(__file__), 'models', 'pothole_model.h5'))
+        
         self.model_path = model_path
         self.model_trained = False
         self.class_names = ['no_pothole', 'small_pothole', 'medium_pothole', 'large_pothole']
@@ -23,10 +28,15 @@ class PotholeDetector:
         """Load existing model or create a new one"""
         if self.model_path and os.path.exists(self.model_path):
             print(f"Loading existing model from {self.model_path}")
-            self.model = tf.keras.models.load_model(self.model_path)
-            self.model_trained = True
+            try:
+                self.model = tf.keras.models.load_model(self.model_path)
+                self.model_trained = True
+                print("✅ Model loaded successfully")
+            except Exception as e:
+                print(f"❌ Error loading model: {str(e)}")
+                self.model_trained = False
         else:
-            print("No trained model found — using OpenCV-based detection")
+            print(f"No trained model found at {self.model_path} — using OpenCV-based detection")
             self.model_trained = False
 
     def create_model(self):

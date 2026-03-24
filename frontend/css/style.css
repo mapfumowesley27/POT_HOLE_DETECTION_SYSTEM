@@ -98,6 +98,12 @@
             color: #1e6df2;
         }
 
+        .btn-disabled-secure {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
         /* ----- maps (glass border & inner shadow) ----- */
         .map-glass {
             border-radius: 1.8rem;
@@ -363,3 +369,4 @@ color: #2c405e;
             border-color: #1e6df2;
             color: white;
         }
+}

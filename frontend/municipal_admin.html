@@ -138,6 +138,21 @@
         .scrollable-table {
             max-height: 400px;
             overflow-y: auto;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table-responsive {
+            overflow-x: auto !important;
+            overflow-y: auto !important;
+            max-width: 100%;
+            display: block;
+            width: 100%;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table-responsive table {
+            min-width: 800px; /* Force horizontal scroll on small screens */
         }
 
         .scrollable-table::-webkit-scrollbar {
@@ -328,13 +343,36 @@
 
         @media (max-width: 768px) {
             .glass-card {
-                padding: 1rem;
+                padding: 0.75rem;
+                border-radius: 1rem;
             }
             .stat-value {
-                font-size: 1.5rem;
+                font-size: 1.25rem;
             }
             .chart-container {
-                height: 200px;
+                height: 180px;
+            }
+            .filter-bar .row > div {
+                margin-bottom: 0.5rem;
+            }
+            .section-title {
+                font-size: 1.1rem;
+                padding-left: 0.75rem;
+            }
+            .navbar-brand {
+                font-size: 1rem;
+            }
+            .table th, .table td {
+                font-size: 0.75rem;
+                padding: 0.4rem;
+                white-space: nowrap;
+            }
+            .btn-glass, .btn-glass-primary {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.8rem;
+            }
+            .table-responsive table {
+                min-width: 600px;
             }
         }
     </style>
@@ -387,7 +425,7 @@
                 <h3 class="section-title mb-0"><i class="fas fa-user-clock"></i> Pending Manager Approvals</h3>
                 <span class="badge bg-warning" id="pendingCount">0</span>
             </div>
-            <div class="glass-table scrollable-table" style="max-height: 250px;">
+            <div class="glass-table scrollable-table table-responsive" style="max-height: 250px;">
                 <table class="table table-sm">
                     <thead>
                         <tr>
@@ -474,7 +512,7 @@
                 </div>
             </div>
             <!-- Users Table - Full Details -->
-            <div class="glass-table scrollable-table">
+            <div class="glass-table scrollable-table table-responsive">
                         <table class="table">
                             <thead>
                                 <tr>
@@ -516,7 +554,7 @@
             <div class="col-md-6">
                 <div class="glass-card">
                     <h3 class="section-title"><i class="fas fa-file-alt"></i> Recent Reports</h3>
-                    <div class="glass-table scrollable-table" style="max-height: 300px;">
+                    <div class="glass-table scrollable-table table-responsive" style="max-height: 300px;">
                         <table class="table table-sm">
                             <thead>
                                 <tr>
@@ -653,6 +691,12 @@
                             </select>
                         </div>
                         <div class="mb-3">
+                            <label class="form-label">Zone</label>
+                            <select class="form-control glass-input" id="editZoneId">
+                                <option value="">None</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Status</label>
                             <select class="form-control glass-input" id="editStatus">
                                 <option value="active">Active</option>
@@ -737,6 +781,7 @@
     </footer>
 
     <!-- Scripts -->
+    <script src="js/config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
@@ -784,7 +829,7 @@
     });
 
     // Rest of your existing code follows...
-    const API_BASE_URL = 'http://localhost:5000';
+    const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'http://localhost:5000';
     let systemChart = null;
     let currentUser = null;
 
@@ -802,7 +847,9 @@
         // Fetch real data from the database
         try {
             // Fetch user stats
-            const usersResponse = await fetch(`${API_BASE_URL}/api/admin/users/stats`);
+            const userRole = localStorage.getItem('userRole');
+            const adminZoneId = localStorage.getItem('zoneId');
+            const usersResponse = await fetch(`${API_BASE_URL}/api/admin/users/stats?role=${userRole}&admin_zone_id=${adminZoneId}`);
             const usersData = await usersResponse.json();
             
             // Fetch pothole stats
@@ -830,7 +877,9 @@
     // Load pending manager approvals
     async function loadPendingApprovals() {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/admin/users`);
+            const userRole = localStorage.getItem('userRole');
+            const adminZoneId = localStorage.getItem('zoneId');
+            const response = await fetch(`${API_BASE_URL}/api/admin/users?role=${userRole}&admin_zone_id=${adminZoneId}`);
             const users = await response.json();
             
             const pendingUsers = users.filter(u => u.status === 'pending');
@@ -922,14 +971,14 @@
             const users = await response.json();
 
             if (!users || users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">No users found. Create one using the "Add New User" button.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4">No users found. Create one using the "Add New User" button.</td></tr>';
                 return;
             }
 
             // Get zone name helper
             const getZoneName = (zoneId) => {
-                const zones = {1: 'Harare', 2: 'Bulawayo', 3: 'Mutare', 4: 'Gweru', 5: 'Masvingo'};
-                return zones[zoneId] || 'Unassigned';
+                const zone = cachedZones.find(z => z.id == zoneId);
+                return zone ? zone.name : 'Unassigned';
             };
             
             tbody.innerHTML = users.map(user => `
@@ -971,24 +1020,40 @@
     }
 
     // Other functions with mock implementations
-    async function loadZones() {
-        // Mock zones
-        const select = document.getElementById('zoneId');
-        const zones = [
-            { id: 1, name: 'Harare City Council' },
-            { id: 2, name: 'Bulawayo City Council' },
-            { id: 3, name: 'Mutare City Council' },
-            { id: 4, name: 'Gweru City Council' },
-            { id: 5, name: 'Masvingo Municipality' }
-        ];
+    let cachedZones = [];
 
-        zones.forEach(zone => {
-            const option = document.createElement('option');
-            option.value = zone.id;
-            option.textContent = zone.name;
-            select.appendChild(option);
-        });
-    }            // Get location name from coordinates (reverse geocoding mock)
+    // Load zones from API
+    async function loadZones() {
+        const select = document.getElementById('zoneId');
+        const editSelect = document.getElementById('editZoneId');
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/zones`);
+            cachedZones = await response.json();
+            
+            // Sort zones by name
+            cachedZones.sort((a, b) => a.name.localeCompare(b.name));
+            
+            // Clear current options
+            select.innerHTML = '<option value="">Select a Zone</option>';
+            editSelect.innerHTML = '<option value="">None</option>';
+            
+            cachedZones.forEach(zone => {
+                const option = document.createElement('option');
+                option.value = zone.id;
+                option.textContent = zone.name;
+                select.appendChild(option);
+                
+                // Add to edit modal too
+                const editOption = option.cloneNode(true);
+                editSelect.appendChild(editOption);
+            });
+        } catch (error) {
+            console.error('Error loading zones:', error);
+        }
+    }
+
+    // Get location name from coordinates (reverse geocoding mock)
     function getLocationName(lat, lng) {
         // Simple reverse geocoding - in production, use a real geocoding service
         const locations = [
@@ -1151,9 +1216,10 @@
                 document.getElementById('editUserId').value = user.id;
                 document.getElementById('editFullName').value = user.full_name || '';
                 document.getElementById('editEmail').value = user.email || '';
-                document.getElementById('editPhone').value = user.phone || '';
+                document.getElementById('editPhone').value = user.phone || user.phone_number || '';
                 document.getElementById('editRole').value = user.role;
                 document.getElementById('editStatus').value = user.status;
+                document.getElementById('editZoneId').value = user.zone_id || '';
                 
                 // Show modal
                 const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
@@ -1170,7 +1236,8 @@
         const data = {
             role: document.getElementById('editRole').value,
             status: document.getElementById('editStatus').value,
-            phone: document.getElementById('editPhone').value
+            phone: document.getElementById('editPhone').value,
+            zone_id: document.getElementById('editZoneId').value ? parseInt(document.getElementById('editZoneId').value) : null
         };
 
         try {
@@ -1186,6 +1253,7 @@
                 alert('User updated successfully!');
                 bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
                 loadUsers();
+                loadDashboardData();
             } else {
                 alert('Error: ' + result.error);
             }
@@ -1218,13 +1286,6 @@
             console.error('Error deleting user:', error);
             alert('Error deleting user');
         }
-    }
-
-    function addUser() {
-        alert('User created successfully! (demo)');
-        bootstrap.Modal.getInstance(document.getElementById('addUserModal')).hide();
-        // Reset form
-        document.getElementById('addUserForm').reset();
     }
 
     async function generateReport(type, element) {
