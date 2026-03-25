@@ -2,7 +2,7 @@
 // ROAD MAINTENANCE MANAGER - COMPLETE JAVASCRIPT
 // =============================================
 
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'http://localhost:5000';
 
 // =============================================
 // INITIALIZATION
@@ -40,6 +40,7 @@ async function initializeManager() {
     await loadMaterials();
     await loadRepairJobs();
     initializeMap();
+    initializeHeatmap(); // Initialize heatmap for manager
     setupCameraEventListeners();
 }
 
@@ -240,57 +241,63 @@ async function loadAlerts() {
     const alertCount = document.getElementById('alertCount');
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/alerts`);
+        const userRole = localStorage.getItem('userRole') || '';
+        const zoneId = localStorage.getItem('zoneId') || '';
+        const response = await fetch(`${API_BASE_URL}/api/alerts?role=${userRole}&zone_id=${zoneId}`);
         const alerts = await response.json();
 
+        // Update alert count badge (pending/unacknowledged only)
         const unacknowledgedAlerts = alerts.filter(a => !a.acknowledged);
         if (alertCount) alertCount.textContent = unacknowledgedAlerts.length;
 
         if (!alerts || alerts.length === 0) {
-            container.innerHTML = '<p class="text-center text-muted py-4">No alerts at this time.</p>';
+            container.innerHTML = '<p class="text-center text-muted py-4 small">No alerts at this time.</p>';
             return;
         }
 
         container.innerHTML = alerts.map(alert => `
-            <div class="alert-card ${alert.acknowledged ? 'acknowledged' : ''}" id="alert${alert.id}">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-${alert.type === 'large_pothole' ? 'exclamation-triangle text-danger' : 'exclamation-circle text-warning'} me-3 fs-4"></i>
+            <div class="alert-card ${alert.acknowledged ? 'acknowledged' : ''}" id="alert${alert.id}" style="border-left-width: 5px;">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="d-flex">
+                        <i class="fas fa-${alert.type === 'large_pothole' ? 'exclamation-triangle text-danger' : 'fire text-warning'} mt-1 me-2"></i>
                         <div>
-                            <h6 class="mb-0 fw-bold">${alert.message}</h6>
-                            <small class="text-muted">
-                                ${alert.sent_at ? new Date(alert.sent_at).toLocaleString() : 'Recent'} •
-                                Size: ${alert.pothole_size || 'Unknown'}
-                            </small>
+                            <p class="mb-1 fw-bold small">${alert.message}</p>
+                            <div class="d-flex gap-2 align-items-center">
+                                <span class="badge ${alert.acknowledged ? 'bg-success' : 'bg-danger'}" style="font-size: 0.65rem;">
+                                    ${alert.acknowledged ? 'ACKNOWLEDGED' : 'NEW'}
+                                </span>
+                                <small class="text-muted" style="font-size: 0.7rem;">
+                                    ${alert.sent_at ? new Date(alert.sent_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Recent'}
+                                </small>
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        ${!alert.acknowledged ? `
-                            <button class="btn btn-glass-warning me-2" onclick="acknowledgeAlert(${alert.id})">
-                                <i class="fas fa-check me-1"></i>Acknowledge
-                            </button>
-                            <button class="btn btn-glass-success" onclick="markForRepair(${alert.pothole_id})">
-                                <i class="fas fa-tools me-1"></i>Mark for Repair
-                            </button>
-                        ` : '<span class="badge bg-success">Acknowledged</span>'}
-                    </div>
+                    ${!alert.acknowledged ? `
+                        <button class="btn btn-sm btn-outline-primary py-0" onclick="acknowledgeAlert(${alert.id})" title="Acknowledge">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    ` : ''}
                 </div>
+                ${alert.pothole_id && !alert.acknowledged ? `
+                    <div class="mt-2 d-flex gap-1">
+                        <button class="btn btn-glass-success btn-sm py-0 w-100" style="font-size: 0.7rem;" onclick="markForRepair(${alert.pothole_id})">
+                            <i class="fas fa-tools me-1"></i>Repair
+                        </button>
+                    </div>
+                ` : ''}
             </div>
         `).join('');
     } catch (error) {
         console.error('Error loading alerts:', error);
-        container.innerHTML = '<p class="text-center text-danger py-4">Error loading alerts. Make sure backend is running.</p>';
+        if (container) container.innerHTML = '<p class="text-center text-danger py-2 small">Error loading alerts.</p>';
     }
 }
 
 async function acknowledgeAlert(alertId) {
     try {
         await fetch(`${API_BASE_URL}/api/alerts/${alertId}/acknowledge`, { method: 'POST' });
-        const alertCard = document.getElementById(`alert${alertId}`);
-        alertCard.classList.add('acknowledged');
-        const buttonDiv = alertCard.querySelector('div:last-child');
-        buttonDiv.innerHTML = '<span class="badge bg-success">Acknowledged</span>';
-        updateAlertCount();
+        // Instead of just adding a class, we reload alerts to respect the new filtering logic
+        loadAlerts();
         showNotification('Alert acknowledged successfully', 'success');
     } catch (error) {
         showNotification('Error acknowledging alert', 'error');
@@ -313,8 +320,8 @@ function markForRepair(potholeId) {
 // =============================================
 async function loadPotholeStats() {
     try {
-        const userRole = localStorage.getItem('userRole');
-        const zoneId = localStorage.getItem('zoneId');
+        const userRole = localStorage.getItem('userRole') || '';
+        const zoneId = localStorage.getItem('zoneId') || '';
         const response = await fetch(`${API_BASE_URL}/api/stats?role=${userRole}&zone_id=${zoneId}`);
         const data = await response.json();
 
@@ -335,10 +342,14 @@ async function loadPotholesToVerify() {
     if (!container) return;
 
     try {
-        const userRole = localStorage.getItem('userRole');
-        const zoneId = localStorage.getItem('zoneId');
+        const userRole = localStorage.getItem('userRole') || '';
+        const zoneId = localStorage.getItem('zoneId') || '';
         const response = await fetch(`${API_BASE_URL}/api/potholes?status=pending&role=${userRole}&zone_id=${zoneId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const potholes = await response.json();
+        console.log('Loaded potholes to verify:', potholes);
 
         if (!potholes || potholes.length === 0) {
             container.innerHTML = '<p class="text-center text-muted py-4">No potholes to verify</p>';
@@ -1169,4 +1180,96 @@ function logout() {
     localStorage.removeItem('userName');
     localStorage.removeItem('userId');
     window.location.href = 'login.html';
+}
+
+// =============================================
+// HEATMAP LOGIC (Density as on public index, now in Manager)
+// =============================================
+let heatMap;
+let heatLayer;
+
+async function initializeHeatmap() {
+    const heatMapEl = document.getElementById('heatmapContainer');
+    if (!heatMapEl) return;
+
+    // Use Harare coordinates as center
+    heatMap = L.map('heatmapContainer').setView([-17.8252, 31.0335], 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(heatMap);
+
+    await loadHeatmapData('all');
+}
+
+async function loadHeatmapData(filter) {
+    try {
+        // Fetch potholes for fallback and potential status filtering (manager zone-aware)
+        const userRole = localStorage.getItem('userRole') || '';
+        const zoneId = localStorage.getItem('zoneId') || '';
+
+        let potholesUrl = `${API_BASE_URL}/api/potholes`;
+        if (filter !== 'all') {
+            potholesUrl += `?status=${filter}`;
+        }
+        const sep = potholesUrl.includes('?') ? '&' : '?';
+        potholesUrl += `${sep}role=${userRole}&zone_id=${zoneId}`;
+
+        const potholesResp = await fetch(potholesUrl);
+        const potholes = await potholesResp.json();
+
+        // Try density endpoint (global density as previously implemented)
+        let densityData = null;
+        try {
+            const densityResp = await fetch(`${API_BASE_URL}/api/potholes/density`);
+            densityData = await densityResp.json();
+        } catch (e) {
+            console.warn('Density endpoint unavailable, using fallback heatmap.');
+        }
+
+        let heatData;
+        if (densityData && densityData.heatmap_data && densityData.heatmap_data.length > 0) {
+            // Use calculated density heatmap data (same as index logic)
+            heatData = densityData.heatmap_data;
+        } else {
+            // Fallback to simple pothole-based heatmap, honoring status filter
+            heatData = potholes
+                .filter(p => p.status !== 'repaired')
+                .map(p => {
+                    // weight by size similar to previous behavior
+                    let intensity = 0.5;
+                    if (p.size_classification === 'large') intensity = 1.0;
+                    else if (p.size_classification === 'medium') intensity = 0.7;
+                    return [p.latitude, p.longitude, intensity];
+                });
+        }
+
+        // Remove existing layer
+        if (heatLayer) {
+            heatMap.removeLayer(heatLayer);
+        }
+
+        // Ensure proper rendering after container layout changes
+        setTimeout(() => heatMap.invalidateSize(), 100);
+
+        // Apply same visual parameters as public index
+        heatLayer = L.heatLayer(heatData, {
+            radius: 30,
+            blur: 20,
+            maxZoom: 17,
+            gradient: {0.2: 'blue', 0.4: 'lime', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red'}
+        }).addTo(heatMap);
+
+    } catch (error) {
+        console.error('Error loading heatmap data:', error);
+    }
+}
+
+function filterHeatmap(filter, btn) {
+    // Update UI
+    const buttons = document.querySelectorAll('.heatmap-filter-btn');
+    buttons.forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    loadHeatmapData(filter);
 }

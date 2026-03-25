@@ -7,23 +7,66 @@ let showAnnotated = true;
 let currentModalPotholeId = null;
 const locationCache = {};
 
+// Folder & Pagination State
+let currentFolder = null; // null means viewing folders
+let itemsPerPage = 12;
+let currentPage = 1;
+
 document.addEventListener('DOMContentLoaded', function () {
+    const isLoggedIn = localStorage.getItem('authToken');
+    const userRole = localStorage.getItem('userRole');
+
+    if (!isLoggedIn || userRole !== 'manager') {
+        alert('Access denied. Maintenance Manager privileges required.');
+        window.location.href = 'login.html';
+        return;
+    }
+
     loadGalleryData();
     setupFilters();
+    setupBreadcrumbs();
+    setupViewModes();
 });
+
+function setupViewModes() {
+    const viewFoldersBtn = document.getElementById('viewFoldersMode');
+    const viewAllBtn = document.getElementById('viewAllMode');
+
+    if (viewFoldersBtn && viewAllBtn) {
+        viewFoldersBtn.addEventListener('click', () => {
+            currentFolder = null;
+            viewFoldersBtn.classList.add('active');
+            viewAllBtn.classList.remove('active');
+            renderGallery();
+            resolveLocations();
+        });
+
+        viewAllBtn.addEventListener('click', () => {
+            currentFolder = 'all'; // Special value for "Show All"
+            viewFoldersBtn.classList.remove('active');
+            viewAllBtn.classList.add('active');
+            renderGallery();
+            resolveLocations();
+        });
+    }
+}
 
 async function loadGalleryData() {
     const loadingState = document.getElementById('loadingState');
     const emptyState = document.getElementById('emptyState');
     const grid = document.getElementById('galleryGrid');
+    const folderGrid = document.getElementById('foldersGrid');
 
     loadingState.style.display = 'block';
     emptyState.style.display = 'none';
     grid.innerHTML = '';
+    folderGrid.innerHTML = '';
 
     try {
+        console.log('Fetching potholes from:', `${API_BASE_URL}/api/potholes`);
         const response = await fetch(`${API_BASE_URL}/api/potholes`);
         const potholes = await response.json();
+        console.log(`Loaded ${potholes.length} potholes from backend`);
 
         allPotholes = potholes.filter(p => p.image_path);
 
@@ -116,20 +159,163 @@ function getFilteredPotholes() {
 }
 
 function renderGallery() {
+    console.log('Rendering gallery... Current view mode:', currentFolder === null ? 'Folders' : (currentFolder === 'all' ? 'All Images' : `Folder: ${currentFolder}`));
     const grid = document.getElementById('galleryGrid');
+    const folderGrid = document.getElementById('foldersGrid');
     const emptyState = document.getElementById('emptyState');
+    const breadcrumb = document.getElementById('galleryBreadcrumb');
+    const pagination = document.getElementById('paginationContainer');
 
     const filtered = getFilteredPotholes();
 
     if (filtered.length === 0) {
         grid.innerHTML = '';
+        folderGrid.innerHTML = '';
         emptyState.style.display = 'block';
+        breadcrumb.style.display = 'none';
+        pagination.style.setProperty('display', 'none', 'important');
         return;
     }
 
     emptyState.style.display = 'none';
 
-    grid.innerHTML = filtered.map(pothole => {
+    if (currentFolder === null) {
+        // Render Folders view
+        renderFolders(filtered);
+        grid.style.display = 'none';
+        folderGrid.style.display = 'flex';
+        breadcrumb.style.display = 'none';
+        pagination.style.setProperty('display', 'none', 'important');
+    } else {
+        // Render Images (either specific folder or all)
+        const folderItems = currentFolder === 'all' 
+            ? filtered 
+            : filtered.filter(p => getFolderName(p) === currentFolder);
+        
+        // Pagination logic
+        const totalPages = Math.ceil(folderItems.length / itemsPerPage);
+        if (currentPage > totalPages) currentPage = Math.max(1, totalPages);
+        
+        const start = (currentPage - 1) * itemsPerPage;
+        const pagedItems = folderItems.slice(start, start + itemsPerPage);
+
+        renderImages(pagedItems);
+        
+        grid.style.display = 'flex';
+        folderGrid.style.display = 'none';
+        
+        if (currentFolder === 'all') {
+            breadcrumb.style.display = 'none';
+        } else {
+            breadcrumb.style.display = 'block';
+            document.getElementById('currentFolderName').textContent = currentFolder;
+        }
+        
+        if (totalPages > 1) {
+            renderPagination(totalPages);
+            pagination.style.setProperty('display', 'flex', 'important');
+        } else {
+            pagination.style.setProperty('display', 'none', 'important');
+        }
+    }
+}
+
+function getFolderName(pothole) {
+    if (!pothole.reported_at) return 'Unknown Date';
+    const date = new Date(pothole.reported_at);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function renderFolders(potholes) {
+    const folderGrid = document.getElementById('foldersGrid');
+    const groups = {};
+    
+    potholes.forEach(p => {
+        const name = getFolderName(p);
+        if (!groups[name]) groups[name] = [];
+        groups[name].push(p);
+    });
+
+    const folderNames = Object.keys(groups).sort((a, b) => new Date(b) - new Date(a));
+
+    folderGrid.innerHTML = folderNames.map(name => {
+        const count = groups[name].length;
+        return `
+            <div class="col-lg-3 col-md-4 col-sm-6">
+                <div class="folder-card" onclick="openFolder('${name}')">
+                    <span class="folder-icon">📂</span>
+                    <div class="folder-name">${name}</div>
+                    <div class="folder-count">${count} ${count === 1 ? 'image' : 'images'}</div>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+function openFolder(name) {
+    currentFolder = name;
+    currentPage = 1;
+    
+    // Update view mode buttons
+    const viewFoldersBtn = document.getElementById('viewFoldersMode');
+    const viewAllBtn = document.getElementById('viewAllMode');
+    if (viewFoldersBtn) viewFoldersBtn.classList.add('active');
+    if (viewAllBtn) viewAllBtn.classList.remove('active');
+
+    renderGallery();
+    resolveLocations();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function setupBreadcrumbs() {
+    document.getElementById('backToFolders').addEventListener('click', function(e) {
+        e.preventDefault();
+        currentFolder = null;
+        renderGallery();
+    });
+}
+
+function renderPagination(totalPages) {
+    const list = document.getElementById('paginationList');
+    let html = '';
+    
+    // Previous
+    html += `
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1}, event)">Previous</a>
+        </li>`;
+    
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            html += `
+                <li class="page-item ${currentPage === i ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="changePage(${i}, event)">${i}</a>
+                </li>`;
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+    }
+    
+    // Next
+    html += `
+        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1}, event)">Next</a>
+        </li>`;
+        
+    list.innerHTML = html;
+}
+
+function changePage(page, event) {
+    if (event) event.preventDefault();
+    currentPage = page;
+    renderGallery();
+    resolveLocations();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderImages(potholes) {
+    const grid = document.getElementById('galleryGrid');
+    grid.innerHTML = potholes.map(pothole => {
         const imageUrl = showAnnotated
             ? `${API_BASE_URL}/api/potholes/${pothole.id}/annotated-image`
             : `${API_BASE_URL}/api/potholes/${pothole.id}/original-image`;
@@ -149,8 +335,9 @@ function renderGallery() {
                     <div class="gallery-card-image" onclick="openModal(${pothole.id})">
                         <span class="id-badge">#${pothole.id}</span>
                         <span class="size-badge ${sizeClass}">${sizeClass}</span>
-                        <img src="${imageUrl}" alt="Pothole #${pothole.id}"
-                             onerror="this.parentElement.innerHTML='<div class=\'image-placeholder\'>🚫</div>'">
+                        <img src="${imageUrl}" alt="Pothole #${pothole.id}" 
+                             onload="console.log('Successfully loaded image for pothole #${pothole.id}')"
+                             onerror="console.error('Failed to load image for pothole #${pothole.id} from: ' + this.src); this.parentElement.innerHTML='<div class=\'image-placeholder\'>🚫<br><small style=\'font-size:10px\'>Load Error</small></div>'">
                     </div>
                     <div class="gallery-card-body">
                         <div class="info-row location-row">
@@ -305,6 +492,7 @@ function setupFilters() {
         this.classList.add('active');
         document.getElementById('viewOriginal').classList.remove('active');
         renderGallery();
+        resolveLocations();
     });
 
     document.getElementById('viewOriginal').addEventListener('click', function () {
@@ -312,5 +500,6 @@ function setupFilters() {
         this.classList.add('active');
         document.getElementById('viewAnnotated').classList.remove('active');
         renderGallery();
+        resolveLocations();
     });
 }

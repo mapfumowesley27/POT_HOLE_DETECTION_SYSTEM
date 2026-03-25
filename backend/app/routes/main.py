@@ -20,7 +20,8 @@ def index():
 def health():
     return {'status': 'healthy'}, 200
 
-@bp.route('/uploads/<filename>')
+@bp.route('/uploads/<path:filename>')
 def uploaded_file(filename):
+    # Serve files from uploads directory, including subfolders like 'repairs/<file>'
     uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
     return send_from_directory(uploads_dir, filename)

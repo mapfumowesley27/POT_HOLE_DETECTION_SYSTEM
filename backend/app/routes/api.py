@@ -151,9 +151,9 @@ def get_potholes():
         
         # Isolation Logic: Maintenance Managers see only their zone
         # Public (no role) sees all (global dashboard)
-        if role == 'manager' and zone_id:
+        if role == 'manager' and zone_id and zone_id.isdigit():
             query = query.filter_by(zone_id=int(zone_id))
-        elif zone_id: # Optional filter for other roles
+        elif zone_id and zone_id.isdigit(): # Optional filter for other roles
             query = query.filter_by(zone_id=int(zone_id))
 
         potholes = query.all()
@@ -185,13 +185,60 @@ def update_pothole(pothole_id):
         return jsonify({'error': str(e)}), 400
 
 
+def get_location_name(lat, lon):
+    """Helper to get location name from coordinates"""
+    # Try to find zone name
+    try:
+        pothole = Pothole.query.filter_by(latitude=lat, longitude=lon).first()
+        if pothole and pothole.zone_id:
+            zone = Zone.query.get(pothole.zone_id)
+            if zone:
+                return f"{zone.name} ({lat:.4f}, {lon:.4f})"
+    except Exception:
+        pass
+    return f"({lat:.4f}, {lon:.4f})"
+
+
 @bp.route('/alerts', methods=['GET'])
 def get_alerts():
-    """Get all alerts"""
+    """Get all alerts with specific filtering:
+    - Remove acknowledged alerts
+    - KEEP large pothole alerts until verified AND repaired
+    """
     try:
-        alerts = Alert.query.order_by(Alert.sent_at.desc()).all()
+        zone_id = request.args.get('zone_id')
+        role = request.args.get('role')
+
+        query = Alert.query
+
+        # Filter by zone if manager
+        if role == 'manager' and zone_id and zone_id.isdigit():
+            query = query.filter_by(zone_id=int(zone_id))
+
+        alerts = query.order_by(Alert.sent_at.desc()).all()
         result = []
+        
         for a in alerts:
+            # Pothole info logic
+            pothole = None
+            if a.pothole_id:
+                pothole = Pothole.query.get(a.pothole_id)
+
+            # Filtering logic:
+            # 1. If not acknowledged, keep it.
+            # 2. If acknowledged but it's a large pothole and NOT repaired, keep it.
+            # 3. Otherwise, if acknowledged, skip it.
+            
+            should_keep = not a.acknowledged
+            
+            if a.acknowledged and a.type == 'large_pothole' and pothole:
+                # Large pothole alerts remain until repaired
+                if pothole.status != 'repaired':
+                    should_keep = True
+
+            if not should_keep:
+                continue
+
             alert_dict = {
                 'id': a.id,
                 'type': a.type,
@@ -199,13 +246,20 @@ def get_alerts():
                 'sent_at': a.sent_at.isoformat() if a.sent_at else None,
                 'acknowledged': a.acknowledged
             }
-            # Add pothole info if exists
-            if a.pothole_id:
-                pothole = Pothole.query.get(a.pothole_id)
-                if pothole:
-                    alert_dict['pothole_id'] = a.pothole_id
-                    alert_dict['pothole_size'] = pothole.size_classification
-                    alert_dict['pothole_location'] = get_location_name(pothole.latitude, pothole.longitude)
+            
+            if pothole:
+                alert_dict['pothole_id'] = a.pothole_id
+                alert_dict['pothole_size'] = pothole.size_classification
+                # Append location to message if missing and pothole exists
+                location_name = get_location_name(pothole.latitude, pothole.longitude)
+                alert_dict['pothole_location'] = location_name
+                if "at location" in a.message and not any(loc in a.message for loc in ["Zone:", "Unknown Location", "("]):
+                     alert_dict['message'] = f"{a.message} {location_name}"
+                elif "at (" in a.message:
+                     # Replace coordinates with name if desired, or just ensure it's there
+                     if location_name not in a.message:
+                         alert_dict['message'] = f"{a.message} (Location: {location_name})"
+
             result.append(alert_dict)
 
         return jsonify(result)
@@ -263,9 +317,12 @@ def get_annotated_image(pothole_id):
             return jsonify({'error': 'No image available for this pothole'}), 404
 
         upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'uploads')
-        image_path = os.path.join(upload_dir, os.path.basename(pothole.image_path))
+        image_filename = os.path.basename(pothole.image_path)
+        image_path = os.path.join(upload_dir, image_filename)
+        
         if not os.path.exists(image_path):
-            return jsonify({'error': 'Image file not found'}), 404
+            print(f"Annotated image error: File not found at {image_path}")
+            return jsonify({'error': f'Image file not found: {image_filename}'}), 404
 
         with open(image_path, 'rb') as f:
             image_bytes = f.read()
@@ -274,10 +331,13 @@ def get_annotated_image(pothole_id):
         return send_file(
             io.BytesIO(annotated_bytes),
             mimetype='image/jpeg',
-            download_name=f'annotated_{pothole.image_path}'
+            download_name=f'annotated_{image_filename}'
         )
 
     except Exception as e:
+        import traceback
+        print(f"Error generating annotated image for ID {pothole_id}: {str(e)}")
+        print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 
@@ -290,13 +350,17 @@ def get_original_image(pothole_id):
             return jsonify({'error': 'No image available for this pothole'}), 404
 
         upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'uploads')
-        image_path = os.path.join(upload_dir, os.path.basename(pothole.image_path))
+        image_filename = os.path.basename(pothole.image_path)
+        image_path = os.path.join(upload_dir, image_filename)
+        
         if not os.path.exists(image_path):
-            return jsonify({'error': 'Image file not found'}), 404
+            print(f"Original image error: File not found at {image_path}")
+            return jsonify({'error': f'Image file not found: {image_filename}'}), 404
 
         return send_file(image_path, mimetype='image/jpeg')
 
     except Exception as e:
+        print(f"Error serving original image for ID {pothole_id}: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -308,7 +372,7 @@ def get_stats():
         role = request.args.get('role')
 
         query = Pothole.query
-        if role == 'manager' and zone_id:
+        if role == 'manager' and zone_id and zone_id.isdigit():
             query = query.filter_by(zone_id=int(zone_id))
 
         total = query.count()
@@ -1166,11 +1230,12 @@ def login():
         return response, 200
 
     except Exception as e:
-        print(f"Login error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         db.session.rollback()
         return jsonify({
             'success': False,
-            'message': 'Server error. Please try again.'
+            'message': f'Server error: {str(e)}'
         }), 500
 # =====================================================
 # MAINTENANCE CREW MANAGEMENT

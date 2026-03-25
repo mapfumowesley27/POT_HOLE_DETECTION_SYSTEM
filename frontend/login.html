@@ -353,7 +353,6 @@
                     <li class="nav-item"><a class="nav-link" href="index.html#report"><i class="fas fa-plus-circle me-1"></i>Report</a></li>
                     <li class="nav-item"><a class="nav-link" href="index.html#map"><i class="fas fa-map-marked-alt me-1"></i>Map</a></li>
                     <li class="nav-item"><a class="nav-link" href="index.html#dashboard"><i class="fas fa-chart-pie me-1"></i>Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="gallery.html"><i class="fas fa-images me-1"></i>Gallery</a></li>
                 </ul>
             </div>
         </div>
@@ -459,7 +458,7 @@
                         <li class="mb-1"><a href="index.html" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Report</a></li>
                         <li class="mb-1"><a href="index.html#map" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Map view</a></li>
                         <li class="mb-1"><a href="index.html#dashboard" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Dashboard</a></li>
-                        <li class="mb-1"><a href="gallery.html" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Gallery</a></li>
+                        <li class="mb-1"><a href="login.html" class="text-decoration-none"><i class="fas fa-arrow-right me-1"></i>Login</a></li>
                     </ul>
                 </div>
                 <div class="col-md-3">
@@ -489,6 +488,7 @@
 
     <script src="js/config.js"></script>
     <script>
+        const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'http://localhost:5000';
         // Typing Animation
         document.addEventListener('DOMContentLoaded', function() {
             const phrases = [

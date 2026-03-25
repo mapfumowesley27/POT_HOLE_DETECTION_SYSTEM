@@ -298,6 +298,70 @@
     color: #fff;
 }
 
+/* Folder styles */
+.folder-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    margin-bottom: 1.5rem;
+    position: relative;
+    border: 1px solid #e9ecef;
+}
+
+.folder-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+}
+
+.folder-icon {
+    font-size: 3.5rem;
+    color: #ffca28; /* Classic folder yellow */
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.folder-name {
+    font-weight: 700;
+    color: #212529;
+    margin-bottom: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.folder-count {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.breadcrumb-item a {
+    text-decoration: none;
+    color: #0d6efd;
+    font-weight: 600;
+}
+
+/* Pagination styles */
+.pagination {
+    gap: 5px;
+}
+
+.pagination .page-link {
+    border-radius: 8px;
+    color: #0d6efd;
+    border: 1px solid #dee2e6;
+    padding: 8px 16px;
+    font-weight: 600;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .stat-card {
