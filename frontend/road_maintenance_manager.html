@@ -1036,6 +1036,18 @@
                                 <option value="">Select Pothole</option>
                             </select>
                         </div>
+
+                        <!-- Pothole Preview (auto-updates when a pothole is selected) -->
+                        <div id="repairPotholePreview" class="mb-3" style="display:none;">
+                            <div class="d-flex align-items-center p-2" style="background: rgba(255,255,255,0.6); border-radius: 12px; border: 1px solid rgba(0,0,0,0.06);">
+                                <img id="repairPotholePreviewImg" src="" alt="Pothole photo" style="width: 96px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid rgba(0,0,0,0.08); margin-right: 12px;" onerror="this.src='https://via.placeholder.com/96x72?text=No+Photo'" />
+                                <div>
+                                    <div id="repairPotholePreviewTitle" class="fw-semibold" style="color:#0a1a2a;">Selected Pothole</div>
+                                    <small id="repairPotholePreviewLocation" class="text-muted"><i class="fas fa-map-marker-alt me-1"></i></small>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label">Assign Crew</label>
                             <select class="form-control glass-input" id="repairJobCrew">

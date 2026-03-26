@@ -3,6 +3,7 @@
 // =============================================
 
 const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.API_BASE_URL : 'http://localhost:5000';
+let currentRepairJobId = null;
 
 // =============================================
 // INITIALIZATION
@@ -11,15 +12,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const isLoggedIn = localStorage.getItem('authToken');
     const userRole = localStorage.getItem('userRole');
 
+    console.log('Manager Page Auth Check:', { isLoggedIn: !!isLoggedIn, userRole });
+
     if (!isLoggedIn) {
         window.location.href = 'login.html';
         return;
     }
 
     if (userRole !== 'manager') {
+        console.warn('Access denied. Expected manager, found:', userRole);
         alert('Access denied. Manager privileges required.');
         window.location.href = 'login.html';
         return;
+    }
+
+    // Check for createJob parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const createJobPotholeId = urlParams.get('createJob');
+    if (createJobPotholeId) {
+        setTimeout(() => {
+            openRepairJobModalFromExternal(createJobPotholeId);
+        }, 1000); // Give it a second to load dependencies
     }
 
     const userName = localStorage.getItem('userName') || 'Maintenance Manager';
@@ -29,19 +42,43 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function initializeManager() {
-    await loadZones();
-    await loadAlerts();
-    await loadPotholeStats();
-    await loadPotholesToVerify();
-    await loadActiveRepairs();
-    await loadRecentlyRepaired();
-    await loadCrews();
-    await loadCrewMembers();
-    await loadMaterials();
-    await loadRepairJobs();
-    initializeMap();
-    initializeHeatmap(); // Initialize heatmap for manager
-    setupCameraEventListeners();
+    console.log('Initializing Manager Page...');
+    
+    // Execute all loading functions concurrently using Promise.allSettled
+    // This prevents one failing request from blocking the entire page initialization
+    const loadingPromises = [
+        loadZones(),
+        loadAlerts(),
+        loadPotholeStats(),
+        loadPotholesToVerify(),
+        loadActiveRepairs(),
+        loadRecentlyRepaired(),
+        loadCrews(),
+        loadCrewMembers(),
+        loadMaterials(),
+        loadRepairJobs(),
+        typeof loadMapMarkers === 'function' ? loadMapMarkers() : Promise.resolve()
+    ];
+
+    try {
+        const results = await Promise.allSettled(loadingPromises);
+        
+        // Log any failures for debugging
+        results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+                console.error(`Loading function ${index} failed:`, result.reason);
+            }
+        });
+        
+        initializeMap();
+        initializeHeatmap(); // Initialize heatmap for manager
+        setupCameraEventListeners();
+        
+        console.log('Manager Page Initialization complete (with some potential failures)');
+    } catch (error) {
+        console.error('Critical error during manager initialization:', error);
+        showNotification('Some dashboard data failed to load. Please refresh.', 'error');
+    }
 }
 
 function setupCameraEventListeners() {
@@ -195,12 +232,41 @@ function captureLivePhoto() {
     showNotification("Photo captured! Please confirm if you want to use it.", 'info');
 }
 
-function confirmRepairCapture() {
-    if (window.capturedImageData) {
-        showNotification("Photo confirmed and pothole marked as repaired!", 'success');
-        document.getElementById('imagePreviewContainer').style.display = 'none';
-        // Here you would normally send the data to the server
+async function confirmRepairCapture() {
+    if (!currentRepairJobId) {
+        showNotification('Please select a repair job first', 'error');
+        return;
     }
+
+    const canvas = document.getElementById('canvas');
+    canvas.toBlob(async (blob) => {
+        const file = new File([blob], `repair_capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+        const formData = new FormData();
+        formData.append('photos', file);
+
+        try {
+            showNotification('Uploading captured photo...', 'info');
+            const response = await fetch(`${API_BASE_URL}/api/repair-jobs/${currentRepairJobId}/photos`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                showNotification('Repair completed successfully!', 'success');
+                document.getElementById('imagePreviewContainer').style.display = 'none';
+                stopCameraFeed();
+                loadActiveRepairs();
+                loadRecentlyRepaired();
+                loadPotholeStats();
+                if (typeof loadMapMarkers === 'function') loadMapMarkers();
+            } else {
+                showNotification('Upload failed', 'error');
+            }
+        } catch (error) {
+            console.error('Error uploading capture:', error);
+            showNotification('Connection error', 'error');
+        }
+    }, 'image/jpeg');
 }
 
 function retakePhoto() {
@@ -344,7 +410,8 @@ async function loadPotholesToVerify() {
     try {
         const userRole = localStorage.getItem('userRole') || '';
         const zoneId = localStorage.getItem('zoneId') || '';
-        const response = await fetch(`${API_BASE_URL}/api/potholes?status=pending&role=${userRole}&zone_id=${zoneId}`);
+        // Changed status from 'pending' to 'reported' to match backend/logic
+        const response = await fetch(`${API_BASE_URL}/api/potholes?status=reported&role=${userRole}&zone_id=${zoneId}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -356,30 +423,38 @@ async function loadPotholesToVerify() {
             return;
         }
 
-        container.innerHTML = potholes.map(p => `
+        container.innerHTML = potholes.map(p => {
+            const photoUrl = p.image_path ? `${API_BASE_URL}/uploads/${p.image_path}` : 'https://via.placeholder.com/150?text=No+Image';
+            
+            return `
             <div class="pothole-card">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <span class="severity-badge severity-${p.size_classification || 'medium'}">
-                            ${p.size_classification || 'Medium'}
-                        </span>
-                        <h6 class="mt-2 mb-1">${getLocationName(p.latitude, p.longitude)}</h6>
-                        <small class="text-muted d-block">
-                            Reported: ${p.reported_at ? new Date(p.reported_at).toLocaleString() : 'Recent'} •
-                            Diameter: ${p.diameter?.toFixed(2) || '?'}m
-                        </small>
-                    </div>
-                    <div class="text-end">
-                        <button class="btn btn-glass-success btn-sm mb-2" onclick="verifyPothole(${p.id})">
-                            <i class="fas fa-check me-1"></i>Verify
-                        </button>
-                        <button class="btn btn-glass-warning btn-sm" onclick="rejectPothole(${p.id})">
-                            <i class="fas fa-times me-1"></i>Reject
-                        </button>
+                <div class="d-flex">
+                    <img src="${photoUrl}" class="repair-image-preview me-3" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;" onclick="viewImage('${photoUrl}')" onerror="this.src='https://via.placeholder.com/80?text=Error'">
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <span class="severity-badge severity-${p.size_classification || 'medium'}">
+                                    ${p.size_classification || 'Medium'}
+                                </span>
+                                <h6 class="mt-2 mb-1">${getLocationName(p.latitude, p.longitude)}</h6>
+                                <small class="text-muted d-block">
+                                    Reported: ${p.reported_at ? new Date(p.reported_at).toLocaleString() : 'Recent'} •
+                                    Diameter: ${p.diameter?.toFixed(2) || '?'}m
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <button class="btn btn-glass-success btn-sm mb-2 d-block w-100" onclick="verifyPothole(${p.id})">
+                                    <i class="fas fa-check me-1"></i>Verify
+                                </button>
+                                <button class="btn btn-glass-warning btn-sm d-block w-100" onclick="rejectPothole(${p.id})">
+                                    <i class="fas fa-times me-1"></i>Reject
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        `).join('');
+        `; }).join('');
     } catch (error) {
         console.error('Error loading potholes:', error);
         container.innerHTML = '<p class="text-center text-danger py-4">Error loading potholes</p>';
@@ -438,7 +513,9 @@ async function loadActiveRepairs() {
     if (!container) return;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/repair-jobs?status=in_progress`);
+        const userRole = localStorage.getItem('userRole') || '';
+        const zoneId = localStorage.getItem('zoneId') || '';
+        const response = await fetch(`${API_BASE_URL}/api/repair-jobs?status=in_progress&role=${userRole}&zone_id=${zoneId}`);
         const repairs = await response.json();
 
         if (!repairs || repairs.length === 0) {
@@ -446,22 +523,33 @@ async function loadActiveRepairs() {
             return;
         }
 
-        container.innerHTML = repairs.map(r => `
+        container.innerHTML = repairs.map(r => {
+            const photoUrl = r.pothole_image ? `${API_BASE_URL}/uploads/${r.pothole_image}` : 'https://via.placeholder.com/150?text=No+Image';
+            
+            return `
             <div class="pothole-card">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="mb-1">Pothole #${r.pothole_id}</h6>
-                        <small class="text-muted">Started: ${r.started_at ? new Date(r.started_at).toLocaleString() : 'Just now'} • Crew: ${r.crew_name || 'Unassigned'}</small>
+                <div class="d-flex">
+                    <img src="${photoUrl}" class="repair-image-preview me-3" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;" onclick="viewImage('${photoUrl}')" onerror="this.src='https://via.placeholder.com/60?text=Error'">
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">Pothole #${r.pothole_id}</h6>
+                                <small class="text-muted">Started: ${r.started_at ? new Date(r.started_at).toLocaleString() : 'Just now'} • Crew: ${r.crew_name || 'Unassigned'}</small>
+                            </div>
+                            <span class="badge bg-warning">In Progress</span>
+                        </div>
+                        <div class="mt-2 d-flex gap-2">
+                            <button class="btn btn-glass-success btn-sm flex-grow-1" onclick="showRepairUpload(${r.id})">
+                                <i class="fas fa-file-upload me-2"></i>Upload Photo
+                            </button>
+                            <button class="btn btn-glass-primary btn-sm flex-grow-1" onclick="showRepairCamera(${r.id})">
+                                <i class="fas fa-camera me-2"></i>Live Capture
+                            </button>
+                        </div>
                     </div>
-                    <span class="badge bg-warning">In Progress</span>
-                </div>
-                <div class="mt-2">
-                    <button class="btn btn-glass-success btn-sm w-100" onclick="showRepairUpload(${r.id})">
-                        <i class="fas fa-cloud-upload-alt me-2"></i>Upload After-Photo & Complete
-                    </button>
                 </div>
             </div>
-        `).join('');
+        `; }).join('');
     } catch (error) {
         console.error('Error loading repairs:', error);
         container.innerHTML = '<p class="text-center text-danger">Error loading repairs</p>';
@@ -473,7 +561,10 @@ async function loadRecentlyRepaired() {
     if (!container) return;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/potholes/repaired`);
+        const userRole = localStorage.getItem('userRole') || '';
+        const zoneId = localStorage.getItem('zoneId') || '';
+        const response = await fetch(`${API_BASE_URL}/api/potholes/repaired?role=${userRole}&zone_id=${zoneId}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const repaired = await response.json();
 
         if (!repaired || repaired.length === 0) {
@@ -482,15 +573,23 @@ async function loadRecentlyRepaired() {
         }
 
         container.innerHTML = repaired.slice(0, 5).map(r => {
-            const photoUrl = r.after_photos && r.after_photos.length > 0 
-                ? `${API_BASE_URL}/uploads/repairs/${r.after_photos[0]}` 
-                : 'https://via.placeholder.com/60?text=N/A';
+            let photoUrl = 'https://via.placeholder.com/60?text=N/A';
+            
+            // Fixed pothole picture logic: more robust handling of image paths
+            if (r.after_photos && Array.isArray(r.after_photos) && r.after_photos.length > 0) {
+                const photoName = r.after_photos[0];
+                if (photoName) {
+                    photoUrl = `${API_BASE_URL}/uploads/repairs/${photoName}`;
+                }
+            } else if (r.image_path) {
+                photoUrl = `${API_BASE_URL}/uploads/${r.image_path}`;
+            }
             
             return `
                 <div class="d-flex align-items-center mb-2">
-                    <img src="${photoUrl}" class="repair-image-preview me-2" onclick="viewImage('${photoUrl}')">
+                    <img src="${photoUrl}" class="repair-image-preview me-2" onclick="viewImage('${photoUrl}')" onerror="this.src='https://via.placeholder.com/60?text=Error'">
                     <div class="flex-grow-1">
-                        <small class="d-block"><strong>Pothole #${r.pothole_id}</strong></small>
+                        <small class="d-block"><strong>Pothole #${r.pothole_id || r.id}</strong></small>
                         <small class="text-muted">${r.completed_at ? new Date(r.completed_at).toLocaleString() : 'Recently'}</small>
                     </div>
                     <i class="fas fa-check-circle text-success"></i>
@@ -499,16 +598,51 @@ async function loadRecentlyRepaired() {
         }).join('');
     } catch (error) {
         console.error('Error loading repaired:', error);
+        container.innerHTML = '<p class="text-center text-danger small">Error loading recently repaired</p>';
     }
 }
 
 function showRepairUpload(jobId) {
+    currentRepairJobId = jobId;
     document.getElementById('repairPhoto').click();
 }
 
+function showRepairCamera(jobId) {
+    currentRepairJobId = jobId;
+    startCameraFeed();
+}
+
 async function handleRepairUpload(input) {
-    if (input.files.length > 0) {
-        showNotification(`${input.files.length} photo(s) uploaded. Pothole marked as repaired!`, 'success');
+    if (input.files.length === 0 || !currentRepairJobId) return;
+
+    const formData = new FormData();
+    for (let i = 0; i < input.files.length; i++) {
+        formData.append('photos', input.files[i]);
+    }
+
+    try {
+        showNotification('Uploading photos...', 'info');
+        const response = await fetch(`${API_BASE_URL}/api/repair-jobs/${currentRepairJobId}/photos`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            showNotification('Pothole marked as repaired!', 'success');
+            loadActiveRepairs();
+            loadRecentlyRepaired();
+            loadPotholeStats(); // Update counters
+            if (typeof loadMapMarkers === 'function') loadMapMarkers();
+        } else {
+            const errorData = await response.json();
+            showNotification(`Error: ${errorData.error || 'Upload failed'}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error uploading repair photos:', error);
+        showNotification('Connection error during upload', 'error');
+    } finally {
+        input.value = ''; // Reset input
+        currentRepairJobId = null;
     }
 }
 
@@ -520,7 +654,9 @@ async function loadCrews() {
     if (!tbody) return;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/crews`);
+        const userRole = localStorage.getItem('userRole') || '';
+        const zoneId = localStorage.getItem('zoneId') || '';
+        const response = await fetch(`${API_BASE_URL}/api/crews?role=${userRole}&zone_id=${zoneId}`);
         const crews = await response.json();
 
         if (!crews || crews.length === 0) {
@@ -672,7 +808,9 @@ function openCrewMemberModal(memberId = null) {
     document.getElementById('crewMemberId').value = memberId || '';
     
     // Populate crew dropdown
-    fetch(`${API_BASE_URL}/api/crews`)
+    const userRole = localStorage.getItem('userRole') || '';
+    const zoneId = localStorage.getItem('zoneId') || '';
+    fetch(`${API_BASE_URL}/api/crews?role=${userRole}&zone_id=${zoneId}`)
         .then(r => r.json())
         .then(crews => {
             const select = document.getElementById('memberCrew');
@@ -875,7 +1013,9 @@ async function loadRepairJobs() {
     if (!tbody) return;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/repair-jobs`);
+        const userRole = localStorage.getItem('userRole') || '';
+        const zoneId = localStorage.getItem('zoneId') || '';
+        const response = await fetch(`${API_BASE_URL}/api/repair-jobs?role=${userRole}&zone_id=${zoneId}`);
         const jobs = await response.json();
 
         // Update stats
@@ -912,6 +1052,8 @@ async function loadRepairJobs() {
     }
 }
 
+let verifiedPotholesCache = [];
+
 function openRepairJobModal(jobId = null) {
     document.getElementById('repairJobModalTitle').innerHTML = '<i class="fas fa-tools me-2"></i>' + (jobId ? 'Edit Job' : 'Create Job');
     document.getElementById('repairJobId').value = jobId || '';
@@ -920,13 +1062,23 @@ function openRepairJobModal(jobId = null) {
     fetch(`${API_BASE_URL}/api/potholes?status=verified`)
         .then(r => r.json())
         .then(potholes => {
+            verifiedPotholesCache = Array.isArray(potholes) ? potholes : [];
             const select = document.getElementById('repairJobPothole');
             select.innerHTML = '<option value="">Select Pothole</option>' + 
-                potholes.map(p => `<option value="${p.id}">#${p.id} - ${getLocationName(p.latitude, p.longitude)}</option>`).join('');
+                verifiedPotholesCache.map(p => `<option value="${p.id}">#${p.id} - ${getLocationName(p.latitude, p.longitude)}</option>`).join('');
+
+            // Hook change to show preview
+            select.onchange = function() {
+                const id = parseInt(this.value, 10);
+                const pot = verifiedPotholesCache.find(pp => pp.id === id);
+                updateRepairPotholePreview(pot || null);
+            };
         });
     
     // Populate crew dropdown
-    fetch(`${API_BASE_URL}/api/crews`)
+    const userRole = localStorage.getItem('userRole') || '';
+    const zoneId = localStorage.getItem('zoneId') || '';
+    fetch(`${API_BASE_URL}/api/crews?role=${userRole}&zone_id=${zoneId}`)
         .then(r => r.json())
         .then(crews => {
             const select = document.getElementById('repairJobCrew');
@@ -942,9 +1094,13 @@ function openRepairJobModal(jobId = null) {
                 document.getElementById('repairJobCrew').value = job.crew_id || '';
                 document.getElementById('repairJobNotes').value = job.notes || '';
                 document.getElementById('repairJobStatus').value = job.status || 'pending';
+                // Try to show preview for pre-selected pothole
+                const pre = verifiedPotholesCache.find(pp => pp.id === job.pothole_id);
+                updateRepairPotholePreview(pre || null);
             });
     } else {
         document.getElementById('repairJobForm').reset();
+        updateRepairPotholePreview(null);
     }
     
     new bootstrap.Modal(document.getElementById('repairJobModal')).show();
@@ -956,7 +1112,8 @@ async function saveRepairJob() {
         pothole_id: document.getElementById('repairJobPothole').value,
         crew_id: document.getElementById('repairJobCrew').value || null,
         notes: document.getElementById('repairJobNotes').value,
-        status: document.getElementById('repairJobStatus').value
+        status: document.getElementById('repairJobStatus').value,
+        assigned_by: localStorage.getItem('userName')
     };
 
     try {
@@ -983,6 +1140,21 @@ async function saveRepairJob() {
 
 function editRepairJob(id) {
     openRepairJobModal(id);
+}
+
+// Helper for opening modal from URL parameter
+function openRepairJobModalFromExternal(potholeId) {
+    // We need to ensure verifiedPotholesCache is populated or fetch it
+    openRepairJobModal();
+    // Use a small delay to let the modal open and fetch complete
+    setTimeout(() => {
+        const select = document.getElementById('repairJobPothole');
+        if (select) {
+            select.value = potholeId;
+            // Trigger change event to update preview
+            select.dispatchEvent(new Event('change'));
+        }
+    }, 1500);
 }
 
 async function updateJobStatus(jobId, newStatus) {
@@ -1025,7 +1197,9 @@ function initializeMap() {
 
 async function loadMapMarkers() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/potholes`);
+        const userRole = localStorage.getItem('userRole') || '';
+        const zoneId = localStorage.getItem('zoneId') || '';
+        const response = await fetch(`${API_BASE_URL}/api/potholes?role=${userRole}&zone_id=${zoneId}`);
         const potholes = await response.json();
         
         // Clear existing markers
@@ -1082,7 +1256,9 @@ async function filterMap(status) {
     mapMarkers = [];
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/potholes`);
+        const userRole = localStorage.getItem('userRole') || '';
+        const zoneId = localStorage.getItem('zoneId') || '';
+        const response = await fetch(`${API_BASE_URL}/api/potholes?role=${userRole}&zone_id=${zoneId}`);
         const potholes = await response.json();
         
         const filtered = status === 'all' ? potholes : potholes.filter(p => p.status === status);
@@ -1155,6 +1331,33 @@ function viewImage(imgUrl) {
     modal.show();
 }
 
+function updateRepairPotholePreview(p) {
+    const wrap = document.getElementById('repairPotholePreview');
+    if (!wrap) return;
+    if (!p) {
+        wrap.style.display = 'none';
+        return;
+    }
+    const img = document.getElementById('repairPotholePreviewImg');
+    const title = document.getElementById('repairPotholePreviewTitle');
+    const loc = document.getElementById('repairPotholePreviewLocation');
+
+    // Build photo URL
+    let photoUrl = 'https://via.placeholder.com/96x72?text=No+Photo';
+    if (p.image_path) {
+        photoUrl = `${API_BASE_URL}/uploads/${p.image_path}`;
+    } else if (typeof p.id === 'number') {
+        // Fallback to conventional filename if present
+        photoUrl = `${API_BASE_URL}/uploads/pothole_${p.id}.jpg`;
+    }
+
+    img.src = photoUrl;
+    title.textContent = `Pothole #${p.id}`;
+    loc.innerHTML = `<i class="fas fa-map-marker-alt me-1"></i>${getLocationName(p.latitude, p.longitude)} (${p.latitude?.toFixed(4)}, ${p.longitude?.toFixed(4)})`;
+
+    wrap.style.display = 'block';
+}
+
 function showNotification(message, type) {
     // Simple notification - could be enhanced with toast notifications
     alert(message);
@@ -1179,6 +1382,7 @@ function logout() {
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
     localStorage.removeItem('userId');
+    localStorage.removeItem('zoneId');
     window.location.href = 'login.html';
 }
 

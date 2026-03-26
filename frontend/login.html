@@ -580,6 +580,7 @@
                     localStorage.setItem('userName', data.user.full_name);
                     localStorage.setItem('userEmail', data.user.email);
                     localStorage.setItem('userId', data.user.id);
+                    localStorage.setItem('zoneId', data.user.zone_id || '');
                     localStorage.setItem('authToken', data.token);
 
                     // Redirect to appropriate dashboard based on role from database

@@ -380,11 +380,20 @@ def get_stats():
         verified = query.filter_by(status='verified').count()
         repaired = query.filter_by(status='repaired').count()
 
+        # Count active repairs
+        from app.models.maintenance import RepairJob
+        repair_query = RepairJob.query.filter_by(status='in_progress')
+        if role == 'manager' and zone_id and zone_id.isdigit():
+            repair_query = repair_query.join(Pothole).filter(Pothole.zone_id == int(zone_id))
+        
+        in_progress = repair_query.count()
+
         return jsonify({
             'total': total,
             'pending': pending,
             'verified': verified,
-            'repaired': repaired
+            'repaired': repaired,
+            'in_progress': in_progress
         })
 
     except Exception as e:
@@ -1099,13 +1108,15 @@ def verify_token():
                         'full_name': user.full_name,
                         'email': user.email,
                         'role': user.role,
-                        'status': user.status
+                        'status': user.status,
+                        'zone_id': user.zone_id
                     }
                 }), 200
 
         return jsonify({'error': 'Invalid token'}), 401
 
     except Exception as e:
+        print(f"Token verification error: {str(e)}")
         return jsonify({'error': str(e)}), 401
 
 
@@ -1220,7 +1231,8 @@ def login():
                 'full_name': user.full_name,
                 'email': user.email,
                 'role': user.role,
-                'status': user.status
+                'status': user.status,
+                'zone_id': user.zone_id
             }
         }
 
@@ -1243,10 +1255,19 @@ def login():
 
 @bp.route('/crews', methods=['GET'])
 def get_crews():
-    """Get all maintenance crews"""
+    """Get all maintenance crews (zone-aware for managers)"""
     try:
         from app.models.maintenance import MaintenanceCrew
-        crews = MaintenanceCrew.query.all()
+        
+        zone_id = request.args.get('zone_id')
+        role = request.args.get('role')
+        
+        query = MaintenanceCrew.query
+        
+        if role == 'manager' and zone_id and zone_id.isdigit():
+            query = query.filter_by(zone_id=int(zone_id))
+            
+        crews = query.all()
         return jsonify([c.to_dict() for c in crews])
     except Exception as e:
         return jsonify({'error': str(e)}), 400
@@ -1429,13 +1450,24 @@ def delete_material(material_id):
 # Repair Jobs endpoints (complete)
 @bp.route('/repair-jobs', methods=['GET'])
 def get_repair_jobs():
-    """Return repair jobs with optional status filter"""
+    """Return repair jobs with optional status filter (zone-aware)"""
     try:
         from app.models.maintenance import RepairJob
+        from app.models.pothole import Pothole
+        
         status = request.args.get('status')
+        zone_id = request.args.get('zone_id')
+        role = request.args.get('role')
+        
         query = RepairJob.query
+        
         if status:
             query = query.filter_by(status=status)
+            
+        # Isolation Logic: Managers see only their zone
+        if role == 'manager' and zone_id and zone_id.isdigit():
+            query = query.join(Pothole).filter(Pothole.zone_id == int(zone_id))
+            
         jobs = query.order_by(RepairJob.assigned_at.desc()).all()
         return jsonify([j.to_dict() for j in jobs])
     except Exception as e:
@@ -1446,13 +1478,25 @@ def create_repair_job():
     """Create a repair job"""
     try:
         from app.models.maintenance import RepairJob
+        from app.models.pothole import Pothole
         data = request.json
         job = RepairJob(
             pothole_id=data['pothole_id'],
             crew_id=data.get('crew_id'),
             assigned_by=data.get('assigned_by'),
-            notes=data.get('notes')
+            notes=data.get('notes'),
+            status=data.get('status', 'pending')
         )
+        
+        # If job is created as in_progress, set start time
+        if job.status == 'in_progress':
+            job.started_at = datetime.utcnow()
+            
+        # Update pothole status to 'in_progress' if job is active
+        pothole = Pothole.query.get(data['pothole_id'])
+        if pothole and job.status == 'in_progress':
+            pothole.status = 'in_progress'
+            
         db.session.add(job)
         db.session.commit()
         return jsonify(job.to_dict()), 201
@@ -1469,10 +1513,15 @@ def update_repair_job(job_id):
         data = request.json
         if 'status' in data:
             job.status = data['status']
-            if data['status'] == 'in_progress' and not job.started_at:
-                job.started_at = datetime.utcnow()
+            if data['status'] == 'in_progress':
+                if not job.started_at:
+                    job.started_at = datetime.utcnow()
+                if job.pothole:
+                    job.pothole.status = 'in_progress'
             elif data['status'] == 'completed' and not job.completed_at:
                 job.completed_at = datetime.utcnow()
+                if job.pothole:
+                    job.pothole.status = 'repaired'
         if 'crew_id' in data: job.crew_id = data['crew_id']
         if 'notes' in data: job.notes = data['notes']
         if 'quality_check_passed' in data:
@@ -1503,6 +1552,11 @@ def upload_repair_job_photos(job_id):
         job.after_photos = uploaded_files
         job.status = 'completed'
         job.completed_at = datetime.utcnow()
+        
+        # Also update the pothole status
+        if job.pothole:
+            job.pothole.status = 'repaired'
+            
         db.session.commit()
         return jsonify({'success': True, 'files': uploaded_files})
     except Exception as e:
@@ -1546,18 +1600,37 @@ def add_repair_job_material(job_id):
 # Get repaired potholes for display
 @bp.route('/potholes/repaired', methods=['GET'])
 def get_repaired_potholes():
-    """Get all repaired potholes with after photos"""
+    """Get all repaired potholes with after photos (zone-aware)"""
     try:
         from app.models.maintenance import RepairJob
-        jobs = RepairJob.query.filter_by(status='completed').all()
+        
+        zone_id = request.args.get('zone_id')
+        role = request.args.get('role')
+        
+        query = RepairJob.query.filter_by(status='completed')
+        
+        # Filter by zone if manager
+        if role == 'manager' and zone_id and zone_id.isdigit():
+            from app.models.pothole import Pothole
+            query = query.join(Pothole).filter(Pothole.zone_id == int(zone_id))
+            
+        jobs = query.order_by(RepairJob.completed_at.desc()).all()
         result = []
         for job in jobs:
             if job.after_photos:
+                # Derive human-friendly location name for UI
+                location_name = None
+                if job.pothole and job.pothole.latitude is not None and job.pothole.longitude is not None:
+                    try:
+                        location_name = get_location_name(job.pothole.latitude, job.pothole.longitude)
+                    except Exception:
+                        location_name = None
                 result.append({
                     'id': job.id,
                     'pothole_id': job.pothole_id,
                     'latitude': job.pothole.latitude if job.pothole else None,
                     'longitude': job.pothole.longitude if job.pothole else None,
+                    'location_name': location_name,
                     'after_photos': job.after_photos,
                     'completed_at': job.completed_at.isoformat() if job.completed_at else None,
                     'repaired_by': job.quality_check_user.full_name if job.quality_check_user else None

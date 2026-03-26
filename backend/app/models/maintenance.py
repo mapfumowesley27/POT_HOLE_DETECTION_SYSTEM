@@ -118,6 +118,7 @@ class RepairJob(db.Model):
             'pothole_id': self.pothole_id,
             'pothole_lat': self.pothole.latitude if self.pothole else None,
             'pothole_lng': self.pothole.longitude if self.pothole else None,
+            'pothole_image': self.pothole.image_path if self.pothole else None,
             'crew_id': self.crew_id,
             'crew_name': self.crew.name if self.crew else None,
             'assigned_by': self.assigned_by,

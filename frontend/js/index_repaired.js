@@ -26,7 +26,7 @@ async function loadRepairedRoads() {
                 ? `${API_BASE_URL}/uploads/repairs/${r.after_photos[0]}` 
                 : 'https://via.placeholder.com/400x300?text=No+Photo';
             
-            const location = getLocationNameFromCoords(r.latitude, r.longitude);
+            const location = r.location_name || getLocationNameFromCoords(r.latitude, r.longitude);
             
             return `
                 <div class="col-md-6 col-lg-4 mb-4">
