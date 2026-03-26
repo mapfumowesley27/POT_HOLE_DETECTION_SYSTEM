@@ -7,7 +7,7 @@ import sys
 def start_backend():
     print("🚀 Starting Backend...")
     # Navigate to the backend directory and run run.py
-    # We use sys.executable to ensure we use the same Python interpreter
+    # We use sys.executable to    ensure we use the same Python interpreter
     backend_script = os.path.join("backend", "run.py")
     # Setting PYTHONPATH so it can find 'app'
     env = os.environ.copy()
